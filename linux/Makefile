@@ -1,5 +1,5 @@
 FIRMWARES = 505 672 700 900 903 960 1000 1050 1100 1102 1150 1200 1250 1300 1302
-SIZES     = 1gb 2gb 3gb 4gb
+SIZES     = 256mb 512mb 1gb 2gb 3gb 4gb
 
 # Generate payload targets automatically
 PAYLOADS = $(foreach fw,$(FIRMWARES), \
@@ -14,9 +14,9 @@ CC = gcc
 CFLAGS = -isystem ../freebsd-headers -nostdinc -nostdlib -fno-stack-protector -static -fPIE -ffreestanding
 LDFLAGS = -Wl,-gc-sections
 
-# VRAM size flags - using conditional to avoid empty variable issues
+# VRAM size flags - value passed as MB to allow sub-1GB sizes (256/512 MB)
 define VRAM_FLAGS
-$(if $(filter 2gb,$(1)),-DVRAM_GB_DEFAULT=2,$(if $(filter 3gb,$(1)),-DVRAM_GB_DEFAULT=3,$(if $(filter 4gb,$(1)),-DVRAM_GB_DEFAULT=4)))
+$(if $(filter 256mb,$(1)),-DVRAM_MB_DEFAULT=256,$(if $(filter 512mb,$(1)),-DVRAM_MB_DEFAULT=512,$(if $(filter 1gb,$(1)),-DVRAM_MB_DEFAULT=1024,$(if $(filter 2gb,$(1)),-DVRAM_MB_DEFAULT=2048,$(if $(filter 3gb,$(1)),-DVRAM_MB_DEFAULT=3072,$(if $(filter 4gb,$(1)),-DVRAM_MB_DEFAULT=4096))))))
 endef
 
 # Firmware version formatting helper (handles both 3-digit and 4-digit versions)

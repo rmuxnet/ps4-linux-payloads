@@ -91,7 +91,7 @@ void kernel_main()
 
 asm("kexec_load:\nmov %rcx, %r10\nmov $153, %rax\nsyscall\nret");
 
-int kexec_load(char* kernel, unsigned long long kernel_size, char* initrd, unsigned long long initrd_size, char* cmdline, int vram_gb);
+int kexec_load(char* kernel, unsigned long long kernel_size, char* initrd, unsigned long long initrd_size, char* cmdline, int vram_mb);
 
 int read_file(char* path, char** ptr, unsigned long long* sz)
 {
@@ -163,16 +163,16 @@ int my_atoi(const char *s)
     return (neg) ? (-ret) : (ret);
 }
 
-#ifndef VRAM_GB_DEFAULT
-#define VRAM_GB_DEFAULT 1
+#ifndef VRAM_MB_DEFAULT
+#define VRAM_MB_DEFAULT 1024
 #endif
 
-#ifndef VRAM_GB_MIN
-#define VRAM_GB_MIN 1
+#ifndef VRAM_MB_MIN
+#define VRAM_MB_MIN 256
 #endif
 
-#ifndef VRAM_GB_MAX
-#define VRAM_GB_MAX 5
+#ifndef VRAM_MB_MAX
+#define VRAM_MB_MAX 5120
 #endif
 
 #ifndef HDD_BOOT_PATH
@@ -197,7 +197,7 @@ int main()
     unsigned long long cmdline_size = 0;
     char* vramstr = NULL;
     unsigned long long vramstr_size = 0;
-    int vramgb = 0;
+    int vram_mb = 0;
 
 #define L(name, where, wheresz, is_fatal)\
     if(read_file("/mnt/usb0/" name, where, wheresz)\
@@ -230,12 +230,12 @@ int main()
     L("vram.txt", &vramstr, &vramstr_size, 0);
     if(vramstr && vramstr_size)
     {
-        vramgb = my_atoi(vramstr);
-        if(vramgb < VRAM_GB_MIN || vramgb > VRAM_GB_MAX)
-            vramgb = VRAM_GB_DEFAULT;
+        vram_mb = my_atoi(vramstr);
+        if(vram_mb < VRAM_MB_MIN || vram_mb > VRAM_MB_MAX)
+            vram_mb = VRAM_MB_DEFAULT;
     }
     else
-        vramgb = VRAM_GB_DEFAULT;
+        vram_mb = VRAM_MB_DEFAULT;
 
     kexec(kernel_main, (void*)0);
     long x, y;
@@ -252,6 +252,6 @@ int main()
         .rtp = NULL
     };
     thr_new(&thr, sizeof(thr));
-    kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline, vramgb);
+    kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline, vram_mb);
     for(;;);
 }

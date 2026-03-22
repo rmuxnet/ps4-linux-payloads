@@ -6,7 +6,7 @@
 The host with precompiled Linux payloads only works with GoldHEN v2.4b18.5/v2.4b18.6 BinLoader. Just open the web browser and cache the host—it will also work offline too.
 [PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced) [▶️ click](https://www.youtube.com/watch?v=T3rXMWw6nIM)
 
-you’ll find Linux payloads for your firmware, along with some extra payloads. The rest are already included in GoldHEN.
+you'll find Linux payloads for your firmware, along with some extra payloads. The rest are already included in GoldHEN.
 
  
 # Supported Firmwares
@@ -31,7 +31,9 @@ you’ll find Linux payloads for your firmware, along with some extra payloads. 
 ## New
 - Automatic boot files placement – The kernel (bzImage) and initramfs.cpio.gz are now automatically copied to /data/linux/boot on the internal drive from the external fat32 partition. Why? No external drive is needed to boot into the rescue shell, only first time.
 
-- RTC time passed to initramfs – The current time from OrbisOS is added to the kernel command line (time=CURRENTTIME), ensuring the correct time is set at boot instead of defaulting to 1970, even if the RTC hardware cannot be read directly. Why? why not. but you need a prepared initramfs that reads the Time from the cmdline and set the time. 
+- RTC time passed to initramfs – The current time from OrbisOS is added to the kernel command line (time=CURRENTTIME), ensuring the correct time is set at boot instead of defaulting to 1970, even if the RTC hardware cannot be read directly. Why? why not. but you need a prepared initramfs that reads the Time from the cmdline and set the time.
+
+- Sub-1GB VRAM payloads – Added 256mb and 512mb payload sizes for PS4 used as a headless server where GPU memory is largely unused. Set `vram.txt` to `256` or `512` (MB) to use them.
 
 
 ## Info 
@@ -42,7 +44,30 @@ so you can go into the rescue shell without a usb stick just upload the ``bzImag
 and of course it will work too with a USB / HDD Drive.  USB have highest prio so if a USB is connected he will  use this bzImage and initramfs.cpio.gz from there 
 
 bootargs.txt you can also add a textfile for changing the cmdline.
-vram.txt with this you can change the vram over a textfile.
+
+### vram.txt
+Control VRAM size via a plain text file containing a number in **MB** (not GB).
+
+| vram.txt value | VRAM allocated | Payload suffix |
+|:-:|:-:|:-:|
+| `256` | 256 MB | `-256mb` |
+| `512` | 512 MB | `-512mb` |
+| `1024` | 1 GB | `-1gb` |
+| `2048` | 2 GB | `-2gb` |
+| `3072` | 3 GB | `-3gb` |
+| `4096` | 4 GB | `-4gb` |
+
+Default is 1024 MB (1 GB) if vram.txt is missing or invalid. Minimum is 256 MB.
+
+> **Note:** 128 MB is not supported — it causes an immediate crash.
+
+## Server Use (256MB / 512MB VRAM)
+
+- **Why 256MB and 512MB?** The idea behind these low VRAM payloads is for users who are repurposing the PS4 as a server for RAM and CPU intensive tasks. If you're just running server stuff headless, you don't need 1GB+ of memory wasted on the GPU. Using these payloads frees up that shared unified memory to be used as regular system RAM instead. 
+
+- **What happened to 128MB?** we tested 128mb but it just crashes the console on boot. 256mb is the absolute lowest safe amount you can give the GPU.
+
+- **How to use:** Just run the 256mb or 512mb payloads. You can also just add `256` or `512` into your `vram.txt` file to set it manually. Don't use these if you plan on gaming or using heavy desktop graphics!
 
 ## Note 
 * With new GoldHEN Version v2.4b18.5/v2.4b18.6 use .elf`s Files instead of .bin it works better 100% Success. 
@@ -67,5 +92,4 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 * sleirsgoevy (for the script and better exploit FW 672) 
 * AlAzif / KiwiDog / Specter / Celesteblue / ChendoChap / zecoxao / SocraticBliss / ctn123 (Exploit and Fun Stuff for the Console)
 * bestpig / EchoStretch / EinTim23 / tihmstar / ArabPixel (Offsets)
-* others ... 
-
+* others ...
