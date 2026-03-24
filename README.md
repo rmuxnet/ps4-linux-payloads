@@ -35,6 +35,8 @@ you'll find Linux payloads for your firmware, along with some extra payloads. Th
 
 - Sub-1GB VRAM payloads – Added 256mb and 512mb payload sizes for PS4 used as a headless server where GPU memory is largely unused. Set `vram.txt` to `256` or `512` (MB) to use them.
 
+- Maybe PS4 pro now runs at full frequency
+
 
 ## Info 
 the internal path by default is at: ``/data/linux/boot``  
