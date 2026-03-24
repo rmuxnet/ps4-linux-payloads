@@ -179,13 +179,24 @@ int my_atoi(const char *s)
  * and Linux boots at the full 2.1 GHz.
  *
  * Returns 0 on success, -1 if the sysctl is unavailable (base PS4 / very old
- * firmware without the MIB).
+ * firmware without the MIB) or if dynamic resolution fails.
  */
 static int neo_switch_mode(void)
 {
+    static int(*sysctlbyname_dynamic)(const char *name, void *oldp, size_t *oldlenp, const void *newp, size_t newlen) = NULL;
+    
+    if(!sysctlbyname_dynamic)
+    {
+        void* handle = dlopen("/system/common/lib/libkernel.sprx", 0);
+        if(!handle) return -1;
+        
+        sysctlbyname_dynamic = dlsym(handle, "sysctlbyname");
+        if(!sysctlbyname_dynamic) return -1;
+    }
+
     /* The sysctl write value 1 requests a switch to Neo mode. */
     int val = 1;
-    int ret = sysctlbyname("kern.neomode_switch", NULL, NULL, &val, sizeof(val));
+    int ret = sysctlbyname_dynamic("kern.neomode_switch", NULL, NULL, &val, sizeof(val));
     return ret;
 }
 
