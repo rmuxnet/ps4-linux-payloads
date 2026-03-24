@@ -77,7 +77,7 @@ void kernel_main()
     *(char*)(kernel_base + kernel_patch_kmem_alloc_1) = 0x07;
     *(char*)(kernel_base + kernel_patch_kmem_alloc_2) = 0x07;
     //set pstate before shutdown, needed for PS4 Pro console
-    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x03;
+    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x00;
     asm volatile("mov %%cr0, %%rax\nbts $16, %%rax\nmov %%rax, %%cr0\nsti":::"rax");
 
     unsigned long long early_printf = kernel_base + kernel_offset_printf;
