@@ -15,7 +15,7 @@
 #define STR(x) #x
 #define XSTR(x) STR(x)
 
-asm("ps4kexec:\n.incbin " XSTR(KEXEC_PATH) "\nps4kexec_end:\n");
+asm("ps4kexec:\n.incbin \"" XSTR(KEXEC_PATH) "\"\nps4kexec_end:\n");
 #include "magic.h"
 
 extern char ps4kexec[];
