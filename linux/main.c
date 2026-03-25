@@ -6,49 +6,47 @@
 #include <signal.h>
 #include <sys/thr.h>
 #include <time.h>
-#include <ps4-offsets/kernel.h>
+struct kmain_entry {
+    int fw;
+    void (*kmain)(void);
+};
 
-#ifndef KEXEC_PATH
-#error "KEXEC_PATH not defined. Please build using the Makefile."
-#endif
+extern void kernel_main_505();
+extern void kernel_main_672();
+extern void kernel_main_700();
+extern void kernel_main_900();
+extern void kernel_main_903();
+extern void kernel_main_960();
+extern void kernel_main_1000();
+extern void kernel_main_1050();
+extern void kernel_main_1100();
+extern void kernel_main_1102();
+extern void kernel_main_1150();
+extern void kernel_main_1200();
+extern void kernel_main_1250();
+extern void kernel_main_1300();
+extern void kernel_main_1302();
 
-#define STR(x) #x
-#define XSTR(x) STR(x)
-
-asm("ps4kexec:\n.incbin \"" XSTR(KEXEC_PATH) "\"\nps4kexec_end:\n");
-#include "magic.h"
-
-extern char ps4kexec[];
-extern char ps4kexec_end[];
+struct kmain_entry kmain_entries[] = {
+    {0x0505, kernel_main_505},
+    {0x0672, kernel_main_672},
+    {0x0700, kernel_main_700},
+    {0x0900, kernel_main_900},
+    {0x0903, kernel_main_903},
+    {0x0960, kernel_main_960},
+    {0x1000, kernel_main_1000},
+    {0x1050, kernel_main_1050},
+    {0x1100, kernel_main_1100},
+    {0x1102, kernel_main_1102},
+    {0x1150, kernel_main_1150},
+    {0x1200, kernel_main_1200},
+    {0x1250, kernel_main_1250},
+    {0x1300, kernel_main_1300},
+    {0x1302, kernel_main_1302},
+    {0, NULL}
+};
 
 void kexec(void* f, void* u);
-
-unsigned long long get_syscall(void)
-{
-    unsigned int eax, ecx, edx;
-    ecx = 0xc0000082;
-    asm volatile("rdmsr":"=a"(eax),"=d"(edx):"c"(ecx));
-    return ((unsigned long long)edx) << 32 | eax;
-}
-
-void kernel_main()
-{
-    unsigned long long kernel_base = get_syscall() - kernel_offset_xfast_syscall;
-    asm volatile("cli\nmov %%cr0, %%rax\nbtc $16, %%rax\nmov %%rax, %%cr0":::"rax");
-    *(char*)(kernel_base + kernel_patch_kmem_alloc_1) = 0x07;
-    *(char*)(kernel_base + kernel_patch_kmem_alloc_2) = 0x07;
-    //set pstate before shutdown, needed for PS4 Pro console
-    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x03;
-    asm volatile("mov %%cr0, %%rax\nbts $16, %%rax\nmov %%rax, %%cr0\nsti":::"rax");
-
-    unsigned long long early_printf = kernel_base + kernel_offset_printf;
-    unsigned long long kmem_alloc = kernel_base + kernel_offset_kmem_alloc;
-    unsigned long long kernel_map = kernel_base + kernel_offset_kernel_map;
-    char* new_ps4_kexec = ((char*(*)(unsigned long long, unsigned long long))kmem_alloc)(*(unsigned long long*)kernel_map, ps4kexec_end-ps4kexec);
-    for(int i = 0; ps4kexec + i != ps4kexec_end; i++)
-        new_ps4_kexec[i] = ps4kexec[i];
-    ((void(*)(void*, void*))new_ps4_kexec)((void*)early_printf, NULL);
-}
 
 asm("kexec_load:\nmov %rcx, %r10\nmov $153, %rax\nsyscall\nret");
 
@@ -142,6 +140,20 @@ int my_atoi(const char *s)
 #define HDD_BOOT_PATH "/data/linux/boot/"
 #endif
 
+int get_fw_version(void)
+{
+    int fw = 0;
+    void *libkernel = dlopen("/system/common/lib/libkernel.sprx", 0);
+    if (libkernel) {
+        int (*sceKernelGetSystemSwVersion)(void) = dlsym(libkernel, "sceKernelGetSystemSwVersion");
+        if (sceKernelGetSystemSwVersion) {
+            int ver = sceKernelGetSystemSwVersion();
+            fw = ver >> 16;
+        }
+    }
+    return fw;
+}
+
 int main()
 {
     struct sigaction sa = {
@@ -200,7 +212,26 @@ int main()
     else
         vram_mb = VRAM_MB_DEFAULT;
 
-    kexec(kernel_main, (void*)0);
+    int fw = get_fw_version();
+    if (!fw) {
+        alert("Failed to detect PS4 firmware version dynamically!");
+        return 1;
+    }
+
+    void (*kmain)(void) = NULL;
+    for (int i = 0; kmain_entries[i].fw != 0; i++) {
+        if (kmain_entries[i].fw == fw) {
+            kmain = kmain_entries[i].kmain;
+            break;
+        }
+    }
+
+    if (!kmain) {
+        alert("Unsupported firmware version! Expected a payload matching this firmware.");
+        return 1;
+    }
+
+    kexec(kmain, (void*)0);
     long x, y;
     struct thr_param thr = {
         .start_func = reboot_thread,
