@@ -31,14 +31,14 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p artifacts/bin artifacts/elf
-          find linux/fw* -type f -name '*.bin' -exec cp --parents -t artifacts/bin/ {} +
-          find linux/fw* -type f -name '*.elf' -exec cp --parents -t artifacts/elf/ {} +
+          find linux/aio -type f -name '*.bin' -exec cp -t artifacts/bin/ {} +
+          find linux/aio -type f -name '*.elf' -exec cp -t artifacts/elf/ {} +
 
       - name: Zip artifacts
         run: |
           cd artifacts
-          zip -r ps4-payloads-bin.zip bin
-          zip -r ps4-payloads-elf.zip elf
+          zip -r ps4-aio-payloads-bin.zip bin
+          zip -r ps4-aio-payloads-elf.zip elf
 
       - name: Generate Release Notes
         run: |
@@ -63,7 +63,7 @@ jobs:
           name: "PS4 Payloads Release v${{ github.run_number }}"
           body_path: release_notes.md
           files: |
-            artifacts/ps4-payloads-bin.zip
-            artifacts/ps4-payloads-elf.zip
+            artifacts/ps4-aio-payloads-bin.zip
+            artifacts/ps4-aio-payloads-elf.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
