@@ -8,54 +8,15 @@
 #include <time.h>
 #include <ps4-offsets/kernel.h>
 
-#if defined(__5_05__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-505/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__6_72__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-672/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__7_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-700/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__9_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-900/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__9_03__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-903/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__9_60__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-960/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__10_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1000/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__10_50__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1050/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__11_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1100/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__11_02__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1102/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__11_50__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1150/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__12_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1200/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__12_50__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1250/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__13_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1300/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#elif defined(__13_02__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-1302/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
-#else
-#error "unsupported firmware"
+#ifndef KEXEC_PATH
+#error "KEXEC_PATH not defined. Please build using the Makefile."
 #endif
+
+#define STR(x) #x
+#define XSTR(x) STR(x)
+
+asm("ps4kexec:\n.incbin " XSTR(KEXEC_PATH) "\nps4kexec_end:\n");
+#include "magic.h"
 
 extern char ps4kexec[];
 extern char ps4kexec_end[];

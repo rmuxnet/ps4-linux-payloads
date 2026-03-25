@@ -72,6 +72,7 @@ fw$(1)/payload-$(1)-$(2)mb$(4).elf: ../lib/lib.a $(3) ps4-kexec-$(1)$(4)/kexec.b
 	@mkdir -p fw$(1)
 	$(CC) $(CFLAGS) ../lib/lib.a \
 	    -D__$(call FW_VER,$(1))__ -DPS4_$(call FW_VER,$(1)) \
+	    -DKEXEC_PATH=ps4-kexec-$(1)$(4)/kexec.bin \
 	    -DVRAM_MB_DEFAULT=$(2) \
 	    -DVRAM_MB_MIN=$(SIZE_LINEAR_MIN_MB) \
 	    -DVRAM_MB_MAX=$(5) \
@@ -83,5 +84,5 @@ $(foreach fw,$(FIRMWARES), \
     $(eval $(call make-payload-rule,$(fw),$(sz),main.c,,$(SIZE_MAX_NORMAL_MB))) \
     $(eval $(call make-payload-rule,$(fw),$(sz),main.c,-pro,$(SIZE_MAX_NORMAL_MB)))) \
   $(foreach sz,$(SIZES_MB_BAIKAL), \
-    $(eval $(call make-payload-rule,$(fw),$(sz),main-baikal.c,-baikal,$(SIZE_MAX_BAIKAL_MB))) \
-    $(eval $(call make-payload-rule,$(fw),$(sz),main-baikal.c,-pro-baikal,$(SIZE_MAX_BAIKAL_MB)))))
+    $(eval $(call make-payload-rule,$(fw),$(sz),main.c,-baikal,$(SIZE_MAX_BAIKAL_MB))) \
+    $(eval $(call make-payload-rule,$(fw),$(sz),main.c,-pro-baikal,$(SIZE_MAX_BAIKAL_MB)))))
