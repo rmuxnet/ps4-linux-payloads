@@ -36,12 +36,28 @@ jobs:
           zip -r ps4-payloads-bin.zip bin
           zip -r ps4-payloads-elf.zip elf
 
+      - name: Generate Release Notes
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=format:"%h - %s")
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          FILE_COUNT=$(find artifacts/bin artifacts/elf -type f | wc -l)
+          
+          cat <<EOF > release_notes.md
+          Automated build of PS4 payloads.
+          
+          ### Build Details
+          - **Date & Time:** $BUILD_DATE
+          - **Total Files Compiled:** $FILE_COUNT
+          - **Latest Commit:** $COMMIT_MSG
+          EOF
+
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
         with:
           tag_name: v${{ github.run_number }}
           name: "PS4 Payloads Release v${{ github.run_number }}"
-          body: "Automated build of PS4 payloads."
+          body_path: release_notes.md
           files: |
             artifacts/ps4-payloads-bin.zip
             artifacts/ps4-payloads-elf.zip
