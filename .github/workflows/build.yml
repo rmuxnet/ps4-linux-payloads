@@ -27,8 +27,8 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p artifacts/bin artifacts/elf
-          find linux/fw* -name '*.bin' -exec cp --parents {} artifacts/bin/ \;
-          find linux/fw* -name '*.elf' -exec cp --parents {} artifacts/elf/ \;
+          find linux/aio -name '*.bin' -exec cp {} artifacts/bin/ ;
+          find linux/aio -name '*.elf' -exec cp {} artifacts/elf/ ;
 
       - name: Zip artifacts
         run: |
@@ -40,11 +40,11 @@ jobs:
         run: |
           COMMIT_MSG=$(git log -1 --pretty=format:"%h - %s")
           BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          FILE_COUNT=$(find artifacts/bin artifacts/elf -type f | wc -l)
-          
+          FILE_COUNT=$(find artifacts/bin -name '*.bin' | wc -l)
+
           cat <<EOF > release_notes.md
           Automated build of PS4 payloads.
-          
+
           ### Build Details
           - **Date & Time:** $BUILD_DATE
           - **Total Files Compiled:** $FILE_COUNT
