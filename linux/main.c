@@ -6,6 +6,12 @@
 #include <signal.h>
 #include <sys/thr.h>
 #include <time.h>
+
+typedef unsigned char  u8;
+typedef unsigned short u16;
+typedef unsigned int   u32;
+typedef unsigned long long u64;
+
 struct kmain_entry {
     int fw;
     void (*kmain)(void);
@@ -27,23 +33,24 @@ extern void kernel_main_1250();
 extern void kernel_main_1300();
 extern void kernel_main_1302();
 
+/* fw values match get_firmware() decimal output: 505, 672, 700 ... */
 struct kmain_entry kmain_entries[] = {
-    {0x0505, kernel_main_505},
-    {0x0672, kernel_main_672},
-    {0x0700, kernel_main_700},
-    {0x0900, kernel_main_900},
-    {0x0903, kernel_main_903},
-    {0x0960, kernel_main_960},
-    {0x1000, kernel_main_1000},
-    {0x1050, kernel_main_1050},
-    {0x1100, kernel_main_1100},
-    {0x1102, kernel_main_1102},
-    {0x1150, kernel_main_1150},
-    {0x1200, kernel_main_1200},
-    {0x1250, kernel_main_1250},
-    {0x1300, kernel_main_1300},
-    {0x1302, kernel_main_1302},
-    {0, NULL}
+    {505,  kernel_main_505},
+    {672,  kernel_main_672},
+    {700,  kernel_main_700},
+    {900,  kernel_main_900},
+    {903,  kernel_main_903},
+    {960,  kernel_main_960},
+    {1000, kernel_main_1000},
+    {1050, kernel_main_1050},
+    {1100, kernel_main_1100},
+    {1102, kernel_main_1102},
+    {1150, kernel_main_1150},
+    {1200, kernel_main_1200},
+    {1250, kernel_main_1250},
+    {1300, kernel_main_1300},
+    {1302, kernel_main_1302},
+    {0,    NULL}
 };
 
 void kexec(void* f, void* u);
@@ -87,8 +94,74 @@ void reboot_thread(void* _)
     kill(1, SIGUSR1);
 }
 
-void* dlopen(const char*, int);
-void* dlsym(void*, const char*);
+/* ------------------------------------------------------------------ *
+ * Firmware detection via libc.sprx SELF/SCE header (no SDK needed)  *
+ * Source: Al-Azif/ps4-skeleton (MIT) / psdevwiki SELF_File_Format   *
+ * ------------------------------------------------------------------ */
+typedef struct { u32 props; u32 reserved; u64 offset; u64 file_size; u64 memory_size; } SelfEntry;
+typedef struct {
+    u32 magic; u8 version; u8 mode; u8 endian; u8 attr;
+    u8 content_type; u8 program_type; u16 padding;
+    u16 header_size; u16 signature_size; u64 self_size;
+    u16 num_of_segments; u16 flags; u32 reserved2;
+} SelfHeader;
+typedef struct {
+    unsigned char e_ident[16]; u16 e_type; u16 e_machine; u32 e_version;
+    u64 e_entry; u64 e_phoff; u64 e_shoff; u32 e_flags;
+    u16 e_ehsize; u16 e_phentsize; u16 e_phnum;
+    u16 e_shentsize; u16 e_shnum; u16 e_shstrndx;
+} SelfElf64_Ehdr;
+typedef struct {
+    u64 program_authority_id; u64 program_type; u64 app_version;
+    u64 fw_version; /* bytes [5:4] of u64 = major.minor BCD */
+    unsigned char digest[0x20];
+} SceHeader;
+
+static u16 g_firmware = 0;
+
+static u16 get_firmware(void)
+{
+    if (g_firmware)
+        return g_firmware;
+
+    int fd = open("/system/common/lib/libc.sprx", O_RDONLY);
+    if (fd < 0)
+        return 0;
+
+    SelfHeader self_hdr;
+    lseek(fd, 0, SEEK_SET);
+    if (read(fd, &self_hdr, sizeof(self_hdr)) != (long)sizeof(self_hdr))
+        goto fail;
+
+    u64 elf_off = sizeof(self_hdr) + (u64)self_hdr.num_of_segments * sizeof(SelfEntry);
+
+    SelfElf64_Ehdr elf_hdr;
+    lseek(fd, (long)elf_off, SEEK_SET);
+    if (read(fd, &elf_hdr, sizeof(elf_hdr)) != (long)sizeof(elf_hdr))
+        goto fail;
+
+    u64 sce_off = elf_off + elf_hdr.e_ehsize + (u64)elf_hdr.e_phnum * elf_hdr.e_phentsize;
+    while (sce_off % 0x10 != 0) sce_off++;
+
+    SceHeader sce_hdr;
+    lseek(fd, (long)sce_off, SEEK_SET);
+    if (read(fd, &sce_hdr, sizeof(sce_hdr)) != (long)sizeof(sce_hdr))
+        goto fail;
+
+    close(fd);
+
+    /* fw_version: byte at shift 40 = major BCD, byte at shift 32 = minor BCD */
+    u8 major = (u8)((sce_hdr.fw_version >> 40) & 0xFF);
+    u8 minor = (u8)((sce_hdr.fw_version >> 32) & 0xFF);
+    u32 maj_dec = ((major >> 4) * 10) + (major & 0xF);
+    u32 min_dec = ((minor >> 4) * 10) + (minor & 0xF);
+    g_firmware = (u16)(maj_dec * 100 + min_dec);
+    return g_firmware;
+
+fail:
+    close(fd);
+    return 0;
+}
 
 void alert(const char* msg)
 {
@@ -140,19 +213,7 @@ int my_atoi(const char *s)
 #define HDD_BOOT_PATH "/data/linux/boot/"
 #endif
 
-int get_fw_version(void)
-{
-    int fw = 0;
-    void *libkernel = dlopen("/system/common/lib/libkernel.sprx", 0);
-    if (libkernel) {
-        int (*sceKernelGetSystemSwVersion)(void) = dlsym(libkernel, "sceKernelGetSystemSwVersion");
-        if (sceKernelGetSystemSwVersion) {
-            int ver = sceKernelGetSystemSwVersion();
-            fw = ver >> 16;
-        }
-    }
-    return fw;
-}
+
 
 int main()
 {
@@ -212,9 +273,9 @@ int main()
     else
         vram_mb = VRAM_MB_DEFAULT;
 
-    int fw = get_fw_version();
+    int fw = (int)get_firmware();
     if (!fw) {
-        alert("Failed to detect PS4 firmware version dynamically!");
+        alert("Failed to detect PS4 firmware version!");
         return 1;
     }
 
