@@ -77,7 +77,7 @@ void kernel_main()
     *(char*)(kernel_base + kernel_patch_kmem_alloc_1) = 0x07;
     *(char*)(kernel_base + kernel_patch_kmem_alloc_2) = 0x07;
     //set pstate before shutdown, needed for PS4 Pro console
-    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x00;
+    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x03;
     asm volatile("mov %%cr0, %%rax\nbts $16, %%rax\nmov %%rax, %%cr0\nsti":::"rax");
 
     unsigned long long early_printf = kernel_base + kernel_offset_printf;
@@ -171,6 +171,8 @@ int my_atoi(const char *s)
 #define VRAM_MB_MIN 256
 #endif
 
+// VRAM_MB_MAX is injected by the Makefile 
+// Provide a safe fallback only if somehow not set (should not happen in normal builds).
 #ifndef VRAM_MB_MAX
 #define VRAM_MB_MAX 5120
 #endif

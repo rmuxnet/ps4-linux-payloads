@@ -6,7 +6,6 @@
 #include <signal.h>
 #include <sys/thr.h>
 #include <time.h>
-#include <sys/sysctl.h>
 #include <ps4-offsets/kernel.h>
 
 #if defined(__5_05__)
@@ -78,7 +77,7 @@ void kernel_main()
     *(char*)(kernel_base + kernel_patch_kmem_alloc_1) = 0x07;
     *(char*)(kernel_base + kernel_patch_kmem_alloc_2) = 0x07;
     //set pstate before shutdown, needed for PS4 Pro console
-    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x00;
+    *(char*)(kernel_base + kern_off_pstate_before_shutdown) = 0x03;
     asm volatile("mov %%cr0, %%rax\nbts $16, %%rax\nmov %%rax, %%cr0\nsti":::"rax");
 
     unsigned long long early_printf = kernel_base + kernel_offset_printf;
@@ -164,42 +163,6 @@ int my_atoi(const char *s)
     return (neg) ? (-ret) : (ret);
 }
 
-/*
- * neo_switch_mode() - Switch the PS4 Pro to Neo (full) mode.
- *
- * When the payload launcher is not a Pro-optimised title, the system enters
- * backward-compatibility mode and downclocks the CPU to 1.6 GHz (base PS4
- * speed).  Linux inherits whatever frequency was active at kexec time, so
- * booting from a non-optimised launcher gives only 1.6 GHz instead of 2.1 GHz.
- *
- * The kernel exposes "kern.neomode_switch" as a sysctl that triggers the same
- * hardware switch the firmware uses when a Neo-capable game is launched.
- * Calling it here, from the payload running in the main menu context, is
- * equivalent to what netcat-from-the-menu achieves: the CPU stays in Pro mode
- * and Linux boots at the full 2.1 GHz.
- *
- * Returns 0 on success, -1 if the sysctl is unavailable (base PS4 / very old
- * firmware without the MIB) or if dynamic resolution fails.
- */
-static int neo_switch_mode(void)
-{
-    static int(*sysctlbyname_dynamic)(const char *name, void *oldp, size_t *oldlenp, const void *newp, size_t newlen) = NULL;
-    
-    if(!sysctlbyname_dynamic)
-    {
-        void* handle = dlopen("/system/common/lib/libkernel.sprx", 0);
-        if(!handle) return -1;
-        
-        sysctlbyname_dynamic = dlsym(handle, "sysctlbyname");
-        if(!sysctlbyname_dynamic) return -1;
-    }
-
-    /* The sysctl write value 1 requests a switch to Neo mode. */
-    int val = 1;
-    int ret = sysctlbyname_dynamic("kern.neomode_switch", NULL, NULL, &val, sizeof(val));
-    return ret;
-}
-
 #ifndef VRAM_MB_DEFAULT
 #define VRAM_MB_DEFAULT 1024
 #endif
@@ -208,6 +171,7 @@ static int neo_switch_mode(void)
 #define VRAM_MB_MIN 256
 #endif
 
+// VRAM_MB_MAX is injected by the Makefile  builds).
 #ifndef VRAM_MB_MAX
 #define VRAM_MB_MAX 5120
 #endif
@@ -226,19 +190,6 @@ int main()
     sigaction(SIGSTOP, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
     sigaction(SIGKILL, &sa, NULL);
-
-    /*
-     * Switch to Neo mode before loading anything.
-     *
-     * This must happen before kexec() because the CPU frequency is locked in
-     * at kexec time.  On a base PS4 the sysctlbyname call will simply fail
-     * (ENOENT) and we continue normally, so the same binary works on both
-     * hardware revisions.
-     */
-    if(neo_switch_mode() == 0)
-        alert("Neo mode active: CPU running at 2.1 GHz");
-    /* On failure we silently continue — base PS4 or unsupported firmware. */
-
     char* kernel = NULL;
     unsigned long long kernel_size = 0;
     char* initrd = NULL;
