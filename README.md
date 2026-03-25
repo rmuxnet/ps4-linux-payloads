@@ -6,7 +6,7 @@
 The host with precompiled Linux payloads only works with GoldHEN v2.4b18.5/v2.4b18.6 BinLoader. Just open the web browser and cache the host—it will also work offline too.
 [PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced) [▶️ click](https://www.youtube.com/watch?v=T3rXMWw6nIM)
 
-you'll find Linux payloads for your firmware, along with some extra payloads. The rest are already included in GoldHEN.
+you'll find Linux payloads for your firmware, along with some exdddtra payloads. The rest are already included in GoldHEN.
 
  
 # Supported Firmwares
