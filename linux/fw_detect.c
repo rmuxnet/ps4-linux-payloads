@@ -8,7 +8,6 @@
  */
 
 #include "fw_detect.h"
-#include "ps4-kexec-700/types.h"
 
 /* FreeBSD O_RDONLY / SEEK_SET come from the payload SDK's fcntl/unistd */
 #ifndef O_RDONLY

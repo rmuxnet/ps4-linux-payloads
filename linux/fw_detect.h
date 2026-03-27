@@ -8,7 +8,15 @@
 #ifndef FW_DETECT_H
 #define FW_DETECT_H
 
-#include "ps4-kexec-700/types.h"
+#include <sys/types.h>
+
+#ifndef U_TYPES_DEFINED
+#define U_TYPES_DEFINED
+typedef unsigned char      u8;
+typedef unsigned short     u16;
+typedef unsigned int       u32;
+typedef unsigned long long u64;
+#endif
 
 /*
  * Returns the firmware version as a plain integer.
