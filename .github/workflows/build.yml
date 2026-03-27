@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,27 +24,35 @@ jobs:
         run: |
           cd linux
           make
+          make aio
 
       - name: Collect artifacts
         run: |
           mkdir -p artifacts/bin artifacts/elf
-          find linux/fw* -name '*.bin' -exec cp --parents {} artifacts/bin/ \;
-          find linux/fw* -name '*.elf' -exec cp --parents {} artifacts/elf/ \;
+          find linux/fw[0-9]* -name '*.bin' -exec cp --parents {} artifacts/bin/ \;
+          find linux/fw[0-9]* -name '*.elf' -exec cp --parents {} artifacts/elf/ \;
+
+      - name: Collect AIO artifacts
+        run: |
+          mkdir -p artifacts/aio
+          find linux/fw_aio -name '*.bin' -exec cp -v {} artifacts/aio/ \;
 
       - name: Zip artifacts
         run: |
           cd artifacts
           zip -r ps4-payloads-bin.zip bin
           zip -r ps4-payloads-elf.zip elf
+          zip -j ps4-payloads-aio.zip aio/*.bin
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: "PS4 Payloads Release v${{ github.run_number }}"
-          body: "Automated build of PS4 payloads."
+          body: "Automated build of PS4 payloads. Includes new All-In-One (AIO) binaries."
           files: |
             artifacts/ps4-payloads-bin.zip
             artifacts/ps4-payloads-elf.zip
+            artifacts/ps4-payloads-aio.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
