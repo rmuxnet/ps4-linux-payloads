@@ -171,11 +171,13 @@ int my_atoi(const char *s)
 #endif
 
 #ifndef VRAM_MB_MIN
-#define VRAM_MB_MIN 256
+#define VRAM_MB_MIN 32
 #endif
 
+// VRAM_MB_MAX is injected by the Makefile
+// Provide a safe fallback only if somehow not set (should not happen in normal builds).
 #ifndef VRAM_MB_MAX
-#define VRAM_MB_MAX 5120
+#define VRAM_MB_MAX 4096
 #endif
 
 #ifndef HDD_BOOT_PATH
