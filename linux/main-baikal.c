@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <sys/thr.h>
 #include <time.h>
+#include <stdio.h>
 #include <ps4-offsets/kernel.h>
 
 #if defined(__5_05__)
@@ -241,6 +242,24 @@ int main()
     }
     else
         vram_mb = VRAM_MB_DEFAULT;
+
+    // Generate info.txt dynamically on the boot drive
+    {
+        int info_fd = open("info.txt", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+        if (info_fd >= 0)
+        {
+            char info_buf[256];
+            int info_len = snprintf(info_buf, sizeof(info_buf), 
+                "PS4 Linux Payload Info\n"
+                "========================\n"
+                "VRAM Applied: %d MB\n"
+                "Variant: Baikal\n", 
+                vram_mb);
+            
+            write(info_fd, info_buf, info_len);
+            close(info_fd);
+        }
+    }
 
     kexec(kernel_main, (void*)0);
     long x, y;
