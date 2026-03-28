@@ -7,7 +7,7 @@ PAYLOADS = $(foreach fw,$(FIRMWARES), \
                fw$(fw)/payload-$(fw)-$(sz)mb.bin \
                fw$(fw)/payload-$(fw)-$(sz)mb-baikal.bin))
 
-# Common compiler flags
+# Common compiler flags - wot
 CC = gcc
 CFLAGS = -isystem ../freebsd-headers -nostdinc -nostdlib -fno-stack-protector -static -fPIE -ffreestanding
 LDFLAGS = -Wl,-gc-sections
