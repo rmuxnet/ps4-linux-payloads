@@ -66,3 +66,49 @@ $(foreach fw,$(FIRMWARES), \
     $(eval $(call make-payload-rule,$(fw),$(sz),main-baikal.c,-baikal)) \
   ) \
 )
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AIO (All-In-One) targets
+# Detects firmware at runtime — one binary covers every supported version.
+# Size variants mirror normal payloads: 32 64 128 256 512 1024 2048 3072 4096 MB.
+#
+# Run: make aio          → all sizes, normal + baikal
+#      make aio-debug    → all sizes, normal + baikal, with alert() debug output
+# ═══════════════════════════════════════════════════════════════════════════
+
+AIO_SRCS    = main-aio.c fw_detect.c fw_offsets.c
+AIO_KEXEC_N = $(foreach fw,$(FIRMWARES),ps4-kexec-$(fw)/kexec.bin)
+AIO_KEXEC_B = $(foreach fw,$(FIRMWARES),ps4-kexec-$(fw)-baikal/kexec.bin)
+
+# Template mirrors make-payload-rule exactly.
+# $(1) = size_mb  $(2) = variant-suffix (e.g. -normal, -baikal)
+# $(3) = kexec dep list  $(4) = extra CFLAGS (e.g. -DAIO_BAIKAL -DAIO_DEBUG)
+define make-aio-payload-rule
+fw_aio/payload-aio-$(1)mb$(2).elf: ../lib/lib.a $(AIO_SRCS) $(3)
+	@mkdir -p fw_aio
+	$(CC) $(CFLAGS) ../lib/lib.a \
+		$(4) \
+		-DVRAM_MB_DEFAULT=$(1) \
+		-DVRAM_MB_MIN=32 \
+		-DVRAM_MB_MAX=4096 \
+		$(AIO_SRCS) $(LDFLAGS) -o $$@
+endef
+
+$(foreach sz,$(SIZES_MB),\
+  $(eval $(call make-aio-payload-rule,$(sz),-normal,$(AIO_KEXEC_N),))\
+  $(eval $(call make-aio-payload-rule,$(sz),-baikal,$(AIO_KEXEC_B),-DAIO_BAIKAL))\
+  $(eval $(call make-aio-payload-rule,$(sz),-normal-debug,$(AIO_KEXEC_N),-DAIO_DEBUG))\
+  $(eval $(call make-aio-payload-rule,$(sz),-baikal-debug,$(AIO_KEXEC_B),-DAIO_BAIKAL -DAIO_DEBUG))\
+)
+
+AIO_BINS = $(foreach sz,$(SIZES_MB),\
+             fw_aio/payload-aio-$(sz)mb-normal.bin\
+             fw_aio/payload-aio-$(sz)mb-baikal.bin)
+
+AIO_DEBUG_BINS = $(foreach sz,$(SIZES_MB),\
+                   fw_aio/payload-aio-$(sz)mb-normal-debug.bin\
+                   fw_aio/payload-aio-$(sz)mb-baikal-debug.bin)
+
+.PHONY: aio aio-debug
+aio:       $(AIO_BINS)
+aio-debug: $(AIO_DEBUG_BINS)

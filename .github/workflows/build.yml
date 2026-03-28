@@ -24,6 +24,11 @@ jobs:
           cd linux
           make
 
+      - name: Build AIO payloads
+        run: |
+          cd linux
+          make aio
+
       - name: Collect artifacts
         run: |
           mkdir -p artifacts/bin artifacts/elf
@@ -35,6 +40,9 @@ jobs:
           cd artifacts
           zip -r ps4-payloads-bin.zip bin
           zip -r ps4-payloads-elf.zip elf
+          # AIO-only zips for convenience
+          zip -r ps4-payloads-aio-bin.zip bin/linux/fw_aio
+          zip -r ps4-payloads-aio-elf.zip elf/linux/fw_aio
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
@@ -45,5 +53,7 @@ jobs:
           files: |
             artifacts/ps4-payloads-bin.zip
             artifacts/ps4-payloads-elf.zip
+            artifacts/ps4-payloads-aio-bin.zip
+            artifacts/ps4-payloads-aio-elf.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
