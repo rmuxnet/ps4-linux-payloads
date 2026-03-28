@@ -1,7 +1,7 @@
 # ![PS4](https://img.shields.io/badge/-PS4-003791?style=flat&logo=PlayStation) Linux Payloads for FW 5.05 - 13.02
 (Southbridge: Aeolia & Belize(2) & Baikal)
 
-**Linux-Payloads** kexec for PlayStation 4.
+**Linux-Payloads** kexec kfor PlayStation 4.
 
 The host with precompiled Linux payloads works well with GoldHEN's PayLoader. Just open the web browser and cache the host—it will also work offline too.
 [PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced)
