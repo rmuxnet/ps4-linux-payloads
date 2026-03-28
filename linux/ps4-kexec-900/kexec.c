@@ -81,13 +81,14 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     //                      FAT&SLIM / PRO
     if (kern.gpu_devid_is_9924()){
         // PS4 PRO
-        kern.set_gpu_freq(1, 853); //673 //853
-        kern.set_gpu_freq(2, 711); //610 //711
-        kern.set_gpu_freq(4, 911); //800 //911
-        kern.set_gpu_freq(5, 800); //711 //800
-        kern.set_gpu_freq(6, 984); //711 //984
+        kern.set_pstate(3); /* Set pstate before programming clocks */
+        kern.set_gpu_freq(1, 853);
+        kern.set_gpu_freq(2, 711);
+        kern.set_gpu_freq(4, 911);
+        kern.set_gpu_freq(5, 800);
+        kern.set_gpu_freq(6, 984); /* Max boost clock for Gladius */
         
-        kern.set_cu_power_gate(0x24);
+        kern.set_cu_power_gate(0x00); /* Enable all Gladius CU groups - was 0x24 which disabled 12 CUs */
     }else{
         kern.set_pstate(3);
         kern.set_gpu_freq(0, 800); //800 //800
@@ -97,13 +98,12 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
         kern.set_gpu_freq(5, 711); //711 //800
         kern.set_gpu_freq(6, 711); //711 //984
 
-        kern.set_cu_power_gate(0x12);
+        kern.set_cu_power_gate(0x00); /* Enable all Liverpool CU groups - was 0x12 which disabled 6 CUs */
     }
-    // Both PRO & FAT/SLIM
-    kern.set_pstate(3);
-    kern.set_gpu_freq(0, 800); //800 //800
-    kern.set_gpu_freq(3, 800); //800 //800
-    kern.set_gpu_freq(7, 673); //673 //673
+    // Both PRO & FAT/SLIM: shared clocks for memory/display engine
+    kern.set_gpu_freq(0, 800);
+    kern.set_gpu_freq(3, 800);
+    kern.set_gpu_freq(7, 673);
     kern.update_vddnp(0x12);
 
     // Copy in kernel image

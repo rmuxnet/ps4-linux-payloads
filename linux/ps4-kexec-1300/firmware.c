@@ -160,13 +160,10 @@ void copy_edid(u8 **p, int sz)
 	int i;
 	u8 *edid = *p;
 	u8 *off_edid = kern.edid;
-	
-	memset(edid, 0, sz);
-    *p += sz;
-	
+
 	for(i = 0; i < sz; i++)
 		*(edid + i) = *(off_edid + i);
-	
+
 	*p += sz;
 }
 
@@ -175,10 +172,7 @@ void copy_eap_hdd_key(u8 **p)
 	int i;
 	u8 *eap_key = *p;
 	u8 *off_eap_key = kern.eap_hdd_key;
-	
-	memset(eap_key, 0, 0x20);
-    *p += 0x20;
-	
+
 	for(i = 0; i < 0x20; i++)
 	{
 		if(i < 0x10)
@@ -243,10 +237,10 @@ int copy_rlc_firmware(u8 **p, const char *name, struct fw_header_t *hdr, size_t 
     fhdr->ip_version_major = 7;
     fhdr->ip_version_minor = 2;
     fhdr->header_size_bytes = offsetof(struct firmware_header, rlc1.end);
-    fhdr->rlc1.ucode_feature_version = 1;
+    fhdr->rlc1.ucode_feature_version = 2; // Liverpool CI needs v2, not v1 (Bonaire SI)
     fhdr->rlc1.save_and_restore_offset = 0x90;
     fhdr->rlc1.clear_state_descriptor_offset = 0x3d;
-    fhdr->rlc1.avail_scratch_ram_locations = 0x270; // 0x170 for bonaire, 0x270 for kabini??
+    fhdr->rlc1.avail_scratch_ram_locations = 0x170; // Liverpool is CI (Bonaire family), not Kabini/SI
     fhdr->rlc1.master_pkt_description_offset = 0;
 
     fhdr->crc32 = crc32(0, fhdr->raw, sizeof(fhdr->raw) + expected_size);
@@ -262,7 +256,7 @@ int copy_sdma_firmware(u8 **p, const char *name, struct fw_header_t *hdr, size_t
     fhdr->ip_version_major = 2;
     fhdr->ip_version_minor = 1;
     fhdr->header_size_bytes = offsetof(struct firmware_header, sdma1.end);
-    fhdr->sdma1.ucode_feature_version = idx == 0 ? 9 : 0;
+    fhdr->sdma1.ucode_feature_version = 1; // Bonaire/Liverpool CI SDMA feature version is 1, not 9 (Hawaii)
     fhdr->sdma1.ucode_change_version = 0;
     fhdr->sdma1.jt_offset = (expected_size & ~0xfff) >> 2;
     fhdr->sdma1.jt_size = (expected_size & 0xfff) >> 2;
@@ -459,7 +453,6 @@ ssize_t firmware_extract(void *dest)
     cpio_hdr(&p, sdma_path, FILE, FW_HEADER_SIZE + fw_sizes->sdma0);
     if (!copy_sdma_firmware(&p, "SDMA", info->sdma0, fw_sizes->sdma0, 0))
         return -1;
-    cpio_hdr(&p, "TRAILER!!!", FILE, 0);
 
     char sdma1_path[64];
     kern.snprintf(sdma1_path, sizeof(sdma1_path), "%s%s_sdma1.bin", dir_path,  get_gpu_name());
