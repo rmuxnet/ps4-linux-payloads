@@ -20,14 +20,14 @@ asm("ps4kexec:\n.incbin \"ps4-kexec-700/kexec.bin\"\nps4kexec_end:\n");
 #elif defined(__7_50__)
 asm("ps4kexec:\n.incbin \"ps4-kexec-750/kexec.bin\"\nps4kexec_end:\n");
 #include "magic.h"
-#elif defined(__9_00__)
-asm("ps4kexec:\n.incbin \"ps4-kexec-900/kexec.bin\"\nps4kexec_end:\n");
-#include "magic.h"
 #elif defined(__8_00__)
 asm("ps4kexec:\n.incbin \"ps4-kexec-800/kexec.bin\"\nps4kexec_end:\n");
 #include "magic.h"
 #elif defined(__8_50__)
 asm("ps4kexec:\n.incbin \"ps4-kexec-850/kexec.bin\"\nps4kexec_end:\n");
+#include "magic.h"
+#elif defined(__9_00__)
+asm("ps4kexec:\n.incbin \"ps4-kexec-900/kexec.bin\"\nps4kexec_end:\n");
 #include "magic.h"
 #elif defined(__9_03__)
 asm("ps4kexec:\n.incbin \"ps4-kexec-903/kexec.bin\"\nps4kexec_end:\n");
@@ -183,11 +183,11 @@ int my_atoi(const char *s)
 // VRAM_MB_MAX is injected by the Makefile
 // Provide a safe fallback only if somehow not set (should not happen in normal builds).
 #ifndef VRAM_MB_MAX
-#define VRAM_MB_MAX 4096
+#define VRAM_MB_MAX 4609
 #endif
 
 #ifndef HDD_BOOT_PATH
-#define HDD_BOOT_PATH "/data/linux/boot/"
+#define HDD_BOOT_PATH "/user/system/boot/"
 #endif
 
 int main()

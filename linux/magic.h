@@ -104,6 +104,7 @@
 #define kern_off_pstate_before_shutdown 0x2CDD6E
 #define kern_off_set_nclk_mem_spd 0x3F1EE0
 
+// 7.50 & 7.55
 #elif defined PS4_7_50 //ArabPixel
 #define kern_off_printf 0x26F740
 #define kern_off_snprintf 0x26FA40

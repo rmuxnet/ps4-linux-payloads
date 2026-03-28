@@ -14,7 +14,7 @@ There's also a great [Linux setup guide by DionKill](https://dionkill.github.io/
 *   FW 5.05 ✅
 *   FW 6.72 ✅
 *   FW 7.00 / 7.01 / 7.02 ✅
-*   FW 7.50 / 7.51 ✅ 
+*   FW 7.50 / 7.51 / 7.55 ✅ 
 *   FW 8.00 / 8.01 / 8.03 ✅
 *   FW 8.50 ✅
 *   FW 9.00 ✅ 
@@ -91,6 +91,8 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 
 
 ## Change log
+
+- Complete support for PS4 7.xx and 8.xx. [v23](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v23)
 
 - Sub-1GB VRAM payloads – Added 128mb, 256mb and 512mb payload sizes for PS4 used as a headless server where GPU memory is largely unused. Set `vram.txt` to `128`, `256` or `512` (MB) to use them. [v22](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v22)
 - **128MB VRAM payloads are now supported (compile yourself by editing Makefile).**
