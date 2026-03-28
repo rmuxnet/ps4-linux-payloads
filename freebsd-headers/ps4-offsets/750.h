@@ -9,5 +9,5 @@
 #define kernel_offset_sysent 0x1122340
 #define kernel_offset_proc_rwmem 0x361310
 
-#define kernel_patch_kmem_alloc_1 0x1754AD
+#define kernel_patch_kmem_alloc_1 0x1754AC
 #define kernel_patch_kmem_alloc_2 0x1754B4

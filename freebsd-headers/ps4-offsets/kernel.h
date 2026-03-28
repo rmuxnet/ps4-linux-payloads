@@ -10,6 +10,12 @@
 #ifdef __7_50__
 #include "750.h"
 #else
+#ifdef __8_00__
+#include "800.h"
+#else
+#ifdef __8_50__
+#include "850.h"
+#else
 #ifdef __9_00__
 #include "900.h"
 #else
@@ -47,6 +53,8 @@
 #include "1302.h"
 #else
 #error "unsupported firmware"
+#endif
+#endif
 #endif
 #endif
 #endif

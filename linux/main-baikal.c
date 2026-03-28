@@ -20,6 +20,12 @@ asm("ps4kexec:\n.incbin \"ps4-kexec-700-baikal/kexec.bin\"\nps4kexec_end:\n");
 #elif defined(__7_50__)
 asm("ps4kexec:\n.incbin \"ps4-kexec-750-baikal/kexec.bin\"\nps4kexec_end:\n");
 #include "magic.h"
+#elif defined(__8_00__)
+asm("ps4kexec:\n.incbin \"ps4-kexec-800-baikal/kexec.bin\"\nps4kexec_end:\n");
+#include "magic.h"
+#elif defined(__8_50__)
+asm("ps4kexec:\n.incbin \"ps4-kexec-850-baikal/kexec.bin\"\nps4kexec_end:\n");
+#include "magic.h"
 #elif defined(__9_00__)
 asm("ps4kexec:\n.incbin \"ps4-kexec-900-baikal/kexec.bin\"\nps4kexec_end:\n");
 #include "magic.h"
