@@ -183,11 +183,15 @@ int my_atoi(const char *s)
 // VRAM_MB_MAX is injected by the Makefile
 // Provide a safe fallback only if somehow not set (should not happen in normal builds).
 #ifndef VRAM_MB_MAX
-#define VRAM_MB_MAX 4096
+#define VRAM_MB_MAX 4609
 #endif
 
 #ifndef HDD_BOOT_PATH
 #define HDD_BOOT_PATH "/data/linux/boot/"
+#endif
+
+#ifndef HDD_SECOND_BOOT_PATH
+#define HDD_SECOND_BOOT_PATH "/user/system/boot/"
 #endif
 
 int main()
@@ -214,9 +218,10 @@ int main()
     if(read_file("/mnt/usb0/" name, where, wheresz)\
     && read_file("/mnt/usb1/" name, where, wheresz)\
     && read_file(HDD_BOOT_PATH name, where, wheresz)\
+    && read_file(HDD_SECOND_BOOT_PATH name, where, wheresz)\
     && is_fatal)\
     {\
-        alert("Failed to load file: " name ".\nPaths checked:\n/mnt/usb0/" name "\n/mnt/usb1/" name "\n" HDD_BOOT_PATH name);\
+        alert("Failed to load file: " name ".\nPaths checked:\n/mnt/usb0/" name "\n/mnt/usb1/" name "\n" HDD_BOOT_PATH name "\n" HDD_SECOND_BOOT_PATH);\
         return 1;\
     }
     L("bzImage", &kernel, &kernel_size, 1);

@@ -31,11 +31,17 @@ There's also a great [Linux setup guide by DionKill](https://dionkill.github.io/
 *   FW 13.02(?) ✅
 
 ## Info 
-the internal path by default is at: ``/data/linux/boot``  
+The internal path by default is at: ``/data/linux/boot``, however it'll also check for ``/user/system/boot/`` in case it was not found.
+
 the rest is coming from the initramfs.cpio.gz init configuration
-so you can go into the rescue shell without a usb stick just upload the ``bzImage`` and ``initramfs.cpio.gz`` over ftp to your PS4 Drive
+so you can go into the rescue shell without a usb stick just upload the ``bzImage`` and ``initramfs.cpio.gz`` over ftp to your PS4 Drive:
+
 ``/data/linux/boot/[bzimage,initramfs.cpio.gz]`` 
-and of course it will work too with a USB / HDD Drive.  USB have highest prio so if a USB is connected he will  use this bzImage and initramfs.cpio.gz from there 
+
+or
+``/user/system/boot/[bzimage,initramfs.cpio.gz]`` 
+
+and of course it will work too with a USB / HDD Drive.  USB have highest priority. If a USB is connected, it will use the bzImage and initramfs.cpio.gz from there .
 
 ### vram.txt
 Control VRAM size via a plain text file containing a number in **MB** (not GB).
