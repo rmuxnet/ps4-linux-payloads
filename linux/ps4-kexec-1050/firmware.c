@@ -166,8 +166,6 @@ void copy_edid(u8 **p, int sz)
 	
 	for(i = 0; i < sz; i++)
 		*(edid + i) = *(off_edid + i);
-	
-	*p += sz;
 }
 
 void copy_eap_hdd_key(u8 **p)
@@ -186,7 +184,6 @@ void copy_eap_hdd_key(u8 **p)
 		else
 			*(eap_key + i) = *(off_eap_key + 0x2F - i);
 	}
-	*p += 0x20;
 }
 
 int copy_firmware(u8 **p, const char *name, struct fw_header_t *hdr, size_t expected_size)
@@ -459,7 +456,6 @@ ssize_t firmware_extract(void *dest)
     cpio_hdr(&p, sdma_path, FILE, FW_HEADER_SIZE + fw_sizes->sdma0);
     if (!copy_sdma_firmware(&p, "SDMA", info->sdma0, fw_sizes->sdma0, 0))
         return -1;
-    cpio_hdr(&p, "TRAILER!!!", FILE, 0);
 
     char sdma1_path[64];
     kern.snprintf(sdma1_path, sizeof(sdma1_path), "%s%s_sdma1.bin", dir_path,  get_gpu_name());
