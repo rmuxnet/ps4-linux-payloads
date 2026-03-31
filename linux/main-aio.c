@@ -7,7 +7,6 @@
  *
  * Compile-time flags:
  *   -DAIO_BAIKAL=1   embed PS4 Pro (Baikal) kexec blobs instead of standard
- *   -DAIO_DEBUG=1    enable runtime fw-detection debug alerts before kexec
  *   -DVRAM_MB_DEFAULT=<n>   default VRAM size in MB (required)
  *   -DVRAM_MB_MIN=<n>       minimum VRAM size in MB
  *   -DVRAM_MB_MAX=<n>       maximum VRAM size in MB
@@ -34,44 +33,64 @@
 #define AIO_BAIKAL 0
 #endif
 
+static unsigned long long str_len(const char *s)
+{
+    unsigned long long len = 0;
+
+    while (s && s[len])
+        len++;
+
+    return len;
+}
+
+static void log_msg(const char *msg)
+{
+    unsigned long long len = str_len(msg);
+
+    if (len)
+        write(1, msg, len);
+    if (!len || msg[len - 1] != '\n')
+        write(1, "\n", 1);
+}
+
 #if AIO_BAIKAL
-asm("kexec_505:\n.incbin \"ps4-kexec-505-baikal/kexec.bin\"\nkexec_505_end:\n");
-asm("kexec_672:\n.incbin \"ps4-kexec-672-baikal/kexec.bin\"\nkexec_672_end:\n");
-asm("kexec_700:\n.incbin \"ps4-kexec-700-baikal/kexec.bin\"\nkexec_700_end:\n");
-asm("kexec_750:\n.incbin \"ps4-kexec-750-baikal/kexec.bin\"\nkexec_750_end:\n");
-asm("kexec_800:\n.incbin \"ps4-kexec-800-baikal/kexec.bin\"\nkexec_800_end:\n");
-asm("kexec_850:\n.incbin \"ps4-kexec-850-baikal/kexec.bin\"\nkexec_850_end:\n");
-asm("kexec_900:\n.incbin \"ps4-kexec-900-baikal/kexec.bin\"\nkexec_900_end:\n");
-asm("kexec_903:\n.incbin \"ps4-kexec-903-baikal/kexec.bin\"\nkexec_903_end:\n");
-asm("kexec_960:\n.incbin \"ps4-kexec-960-baikal/kexec.bin\"\nkexec_960_end:\n");
-asm("kexec_1000:\n.incbin \"ps4-kexec-1000-baikal/kexec.bin\"\nkexec_1000_end:\n");
-asm("kexec_1050:\n.incbin \"ps4-kexec-1050-baikal/kexec.bin\"\nkexec_1050_end:\n");
-asm("kexec_1100:\n.incbin \"ps4-kexec-1100-baikal/kexec.bin\"\nkexec_1100_end:\n");
-asm("kexec_1102:\n.incbin \"ps4-kexec-1102-baikal/kexec.bin\"\nkexec_1102_end:\n");
-asm("kexec_1150:\n.incbin \"ps4-kexec-1150-baikal/kexec.bin\"\nkexec_1150_end:\n");
-asm("kexec_1200:\n.incbin \"ps4-kexec-1200-baikal/kexec.bin\"\nkexec_1200_end:\n");
-asm("kexec_1250:\n.incbin \"ps4-kexec-1250-baikal/kexec.bin\"\nkexec_1250_end:\n");
-asm("kexec_1300:\n.incbin \"ps4-kexec-1300-baikal/kexec.bin\"\nkexec_1300_end:\n");
-asm("kexec_1302:\n.incbin \"ps4-kexec-1302-baikal/kexec.bin\"\nkexec_1302_end:\n");
+asm("kexec_505:\n.incbin \"kexec-build/baikal/505/kexec.bin\"\nkexec_505_end:\n");
+asm("kexec_672:\n.incbin \"kexec-build/baikal/672/kexec.bin\"\nkexec_672_end:\n");
+asm("kexec_700:\n.incbin \"kexec-build/baikal/700/kexec.bin\"\nkexec_700_end:\n");
+asm("kexec_750:\n.incbin \"kexec-build/baikal/750/kexec.bin\"\nkexec_750_end:\n");
+asm("kexec_800:\n.incbin \"kexec-build/baikal/800/kexec.bin\"\nkexec_800_end:\n");
+asm("kexec_850:\n.incbin \"kexec-build/baikal/850/kexec.bin\"\nkexec_850_end:\n");
+asm("kexec_900:\n.incbin \"kexec-build/baikal/900/kexec.bin\"\nkexec_900_end:\n");
+asm("kexec_903:\n.incbin \"kexec-build/baikal/903/kexec.bin\"\nkexec_903_end:\n");
+asm("kexec_960:\n.incbin \"kexec-build/baikal/960/kexec.bin\"\nkexec_960_end:\n");
+asm("kexec_1000:\n.incbin \"kexec-build/baikal/1000/kexec.bin\"\nkexec_1000_end:\n");
+asm("kexec_1050:\n.incbin \"kexec-build/baikal/1050/kexec.bin\"\nkexec_1050_end:\n");
+asm("kexec_1100:\n.incbin \"kexec-build/baikal/1100/kexec.bin\"\nkexec_1100_end:\n");
+asm("kexec_1102:\n.incbin \"kexec-build/baikal/1102/kexec.bin\"\nkexec_1102_end:\n");
+asm("kexec_1150:\n.incbin \"kexec-build/baikal/1150/kexec.bin\"\nkexec_1150_end:\n");
+asm("kexec_1200:\n.incbin \"kexec-build/baikal/1200/kexec.bin\"\nkexec_1200_end:\n");
+asm("kexec_1250:\n.incbin \"kexec-build/baikal/1250/kexec.bin\"\nkexec_1250_end:\n");
+asm("kexec_1300:\n.incbin \"kexec-build/baikal/1300/kexec.bin\"\nkexec_1300_end:\n");
+asm("kexec_1302:\n.incbin \"kexec-build/baikal/1302/kexec.bin\"\nkexec_1302_end:\n");
 #else
-asm("kexec_505:\n.incbin \"ps4-kexec-505/kexec.bin\"\nkexec_505_end:\n");
-asm("kexec_672:\n.incbin \"ps4-kexec-672/kexec.bin\"\nkexec_672_end:\n");
-asm("kexec_700:\n.incbin \"ps4-kexec-700/kexec.bin\"\nkexec_700_end:\n");
-asm("kexec_750:\n.incbin \"ps4-kexec-750/kexec.bin\"\nkexec_750_end:\n");
-asm("kexec_800:\n.incbin \"ps4-kexec-800/kexec.bin\"\nkexec_800_end:\n");
-asm("kexec_850:\n.incbin \"ps4-kexec-850/kexec.bin\"\nkexec_850_end:\n");
-asm("kexec_900:\n.incbin \"ps4-kexec-900/kexec.bin\"\nkexec_900_end:\n");
-asm("kexec_903:\n.incbin \"ps4-kexec-903/kexec.bin\"\nkexec_903_end:\n");
-asm("kexec_960:\n.incbin \"ps4-kexec-960/kexec.bin\"\nkexec_960_end:\n");
-asm("kexec_1000:\n.incbin \"ps4-kexec-1000/kexec.bin\"\nkexec_1000_end:\n");
-asm("kexec_1050:\n.incbin \"ps4-kexec-1050/kexec.bin\"\nkexec_1050_end:\n");
-asm("kexec_1100:\n.incbin \"ps4-kexec-1100/kexec.bin\"\nkexec_1100_end:\n");
-asm("kexec_1102:\n.incbin \"ps4-kexec-1102/kexec.bin\"\nkexec_1102_end:\n");
-asm("kexec_1150:\n.incbin \"ps4-kexec-1150/kexec.bin\"\nkexec_1150_end:\n");
-asm("kexec_1200:\n.incbin \"ps4-kexec-1200/kexec.bin\"\nkexec_1200_end:\n");
-asm("kexec_1250:\n.incbin \"ps4-kexec-1250/kexec.bin\"\nkexec_1250_end:\n");
-asm("kexec_1300:\n.incbin \"ps4-kexec-1300/kexec.bin\"\nkexec_1300_end:\n");
-asm("kexec_1302:\n.incbin \"ps4-kexec-1302/kexec.bin\"\nkexec_1302_end:\n");
+asm("kexec_505:\n.incbin \"kexec-build/normal/505/kexec.bin\"\nkexec_505_end:\n");
+asm("kexec_672:\n.incbin \"kexec-build/normal/672/kexec.bin\"\nkexec_672_end:\n");
+asm("kexec_700:\n.incbin \"kexec-build/normal/700/kexec.bin\"\nkexec_700_end:\n");
+asm("kexec_750:\n.incbin \"kexec-build/normal/750/kexec.bin\"\nkexec_750_end:\n");
+asm("kexec_800:\n.incbin \"kexec-build/normal/800/kexec.bin\"\nkexec_800_end:\n");
+asm("kexec_850:\n.incbin \"kexec-build/normal/850/kexec.bin\"\nkexec_850_end:\n");
+asm("kexec_900:\n.incbin \"kexec-build/normal/900/kexec.bin\"\nkexec_900_end:\n");
+asm("kexec_903:\n.incbin \"kexec-build/normal/903/kexec.bin\"\nkexec_903_end:\n");
+asm("kexec_960:\n.incbin \"kexec-build/normal/960/kexec.bin\"\nkexec_960_end:\n");
+asm("kexec_1000:\n.incbin \"kexec-build/normal/1000/kexec.bin\"\nkexec_1000_end:\n");
+asm("kexec_1050:\n.incbin \"kexec-build/normal/1050/kexec.bin\"\nkexec_1050_end:\n");
+asm("kexec_1100:\n.incbin \"kexec-build/normal/1100/kexec.bin\"\nkexec_1100_end:\n");
+asm("kexec_1102:\n.incbin \"kexec-build/normal/1102/kexec.bin\"\nkexec_1102_end:\n");
+asm("kexec_1150:\n.incbin \"kexec-build/normal/1150/kexec.bin\"\nkexec_1150_end:\n");
+asm("kexec_1200:\n.incbin \"kexec-build/normal/1200/kexec.bin\"\nkexec_1200_end:\n");
+asm("kexec_1250:\n.incbin \"kexec-build/normal/1250/kexec.bin\"\nkexec_1250_end:\n");
+asm("kexec_1300:\n.incbin \"kexec-build/normal/1300/kexec.bin\"\nkexec_1300_end:\n");
+asm("kexec_1302:\n.incbin \"kexec-build/normal/1302/kexec.bin\"\nkexec_1302_end:\n");
 #endif
 
 /* Forward deklaracijos visiems blob simboliams, nxj */
@@ -188,41 +207,8 @@ static void get_kexec_blob(u16 norm_fw, char **start, char **end)
     }
 }
 
-/* u16 į dec stringą (null-terminated), nxj.
- * buf bent 6 baitai. */
-static void u16_to_dec(u16 val, char *buf)
-{
-    char tmp[6];
-    int i = 0;
-    if (val == 0) { buf[0] = '0'; buf[1] = '\0'; return; }
-    while (val) { tmp[i++] = '0' + (val % 10); val /= 10; }
-    int j = 0;
-    while (i--) buf[j++] = tmp[i];
-    buf[j] = '\0';
-}
-
-/* u64 į "0x..." hex stringą (null-terminated), nxj.
- * buf bent 20 baitų. */
-static void itohex(u64 val, char *buf)
-{
-    static const char h[] = "0123456789abcdef";
-    buf[0] = '0'; buf[1] = 'x';
-    int i = 2;
-    int shift = 60;
-    int started = 0;
-    while (shift >= 0) {
-        int nib = (val >> shift) & 0xF;
-        if (nib || started || shift == 0) {
-            buf[i++] = h[nib];
-            started = 1;
-        }
-        shift -= 4;
-    }
-    buf[i] = '\0';
-}
-
 /* ═══════════════════════════════════════════════════════════════════
- * §5  Platformos nxj pagalbinės (kaip ir original main.c)
+ * §5  Platformos nxj pagalbinės AIO paleidimo keliui
  * ═══════════════════════════════════════════════════════════════════ */
 
 asm("kexec_load:\nmov %rcx, %r10\nmov $153, %rax\nsyscall\nret");
@@ -265,21 +251,6 @@ void reboot_thread(void *_)
     evf_cancel(evf, 0x4000, 0);
     evf_close(evf);
     kill(1, SIGUSR1);
-}
-
-void *dlopen(const char *, int);
-void *dlsym(void *, const char *);
-
-void alert(const char *msg)
-{
-    // Parodo alertą per PS4 sistemą, nxj
-    static int (*sceSysUtilSendSystemNotificationWithText)(int, const char *);
-    if (!sceSysUtilSendSystemNotificationWithText) {
-        void *handle = dlopen("/system/common/lib/libSceSysUtil.sprx", 0);
-        sceSysUtilSendSystemNotificationWithText =
-            dlsym(handle, "sceSysUtilSendSystemNotificationWithText");
-    }
-    sceSysUtilSendSystemNotificationWithText(222, msg);
 }
 
 int my_atoi(const char *s)
@@ -385,44 +356,15 @@ int main(void)
 
     g_fw = find_offsets_by_fw(norm);
     if (!g_fw) {
-        alert("AIO: Unsupported firmware version — no offset table entry. Nxj.");
+        log_msg("AIO: Unsupported firmware version - no offset table entry.");
         return 1;
     }
 
     get_kexec_blob(norm, &g_kexec_s, &g_kexec_e);
     if (!g_kexec_s || g_kexec_s == g_kexec_e) {
-        alert("AIO: No kexec blob found for this firmware. Nxj.");
+        log_msg("AIO: No kexec blob found for this firmware.");
         return 1;
     }
-
-/* ── DEBUG BLOKAS, nxj ───────────────────────────────────────────── */
-#if AIO_DEBUG
-    {
-        char decbuf[8];
-        u16_to_dec(fw_ver, decbuf);
-        alert(decbuf); /* pvz. "700" */
-
-        fw_offsets_t *fw_offsets = find_offsets_by_fw(fw_ver);
-        if (!fw_offsets) {
-            alert("DEBUG: find_offsets_by_fw grąžino NULL šitam nxj:");
-            alert(decbuf);
-            return 1;
-        }
-        alert("DEBUG: offsetai rasti! Nxj!");
-
-        char addr_str[20];
-        itohex(fw_offsets->kmem_alloc, addr_str);
-
-        char final_msg[128] = "kmem_alloc offsetas: ";
-        int i = 0;
-        while (final_msg[i] != '\0') i++;
-        int j = 0;
-        while (addr_str[j] != '\0') final_msg[i++] = addr_str[j++];
-        final_msg[i] = '\0';
-        alert(final_msg);
-    }
-#endif
-/* ── DEBUG BLOKO PABAIGA, nxj ────────────────────────────────────── */
 
     /* ── Linux failų krovimas iš USB ar HDD, nxj ───────────────────── */
     char *kernel = NULL; unsigned long long kernel_size = 0;
@@ -437,9 +379,9 @@ int main(void)
      && read_file(HDD_BOOT_PATH name, where, wheresz) \
      && read_file(HDD_SECOND_BOOT_PATH name, where, wheresz) \
      && is_fatal) { \
-        alert("Nepavyko užkraut failo: " name ".\nPatikrinti keliai:\n" \
-              "/mnt/usb0/" name "\n/mnt/usb1/" name "\n" \
-              HDD_BOOT_PATH name "\n" HDD_SECOND_BOOT_PATH name "\nNxj!"); \
+        log_msg("Failed to load file: " name "\nChecked paths:\n" \
+                "/mnt/usb0/" name "\n/mnt/usb1/" name "\n" \
+                HDD_BOOT_PATH name "\n" HDD_SECOND_BOOT_PATH name); \
         return 1; \
     }
 
