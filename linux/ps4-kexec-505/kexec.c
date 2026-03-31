@@ -67,6 +67,7 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     int (*copyout)(const void *kaddr, void *uaddr, size_t len) = td ? kern.copyout : k_copyout;
 
     kern.printf("sys_kexec invoked\n");
+    kern.printf("Firmware version: %d\n", FW_VERSION);
     kern.printf("sys_kexec(%p, %zu, %p, %zu, \"%s\")\n", uap->image,
         uap->image_size, uap->initramfs, uap->initramfs_size, uap->cmd_line);
 
