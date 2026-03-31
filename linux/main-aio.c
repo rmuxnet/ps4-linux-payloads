@@ -295,6 +295,11 @@ int my_atoi(const char *s)
     return neg ? -ret : ret;
 }
 
+static int pack_kexec_vram_arg(int vram_mb, u16 fw_ver)
+{
+    return (int)(((u32)fw_ver << 16) | ((u32)vram_mb & 0xFFFFu));
+}
+
 /* ═══════════════════════════════════════════════════════════════════
  * §6  kernel_main() — kernel kontekste po kexec nxj exploito
  *     Skaito g_fw / g_kexec_s / g_kexec_e kuriuos main() uždeda, nxj.
@@ -480,6 +485,7 @@ int main(void)
         .rtp        = NULL,
     };
     thr_new(&thr, sizeof(thr));
-    kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline, vram_mb);
+    kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline,
+               pack_kexec_vram_arg(vram_mb, fw_ver));
     for (;;);
 }

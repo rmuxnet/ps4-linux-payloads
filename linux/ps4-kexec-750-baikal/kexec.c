@@ -51,6 +51,20 @@ static int k_copyout(const void *kaddr, void *uaddr, size_t len)
     return 0;
 }
 
+#define KEXEC_VRAM_MB_MASK 0xFFFFu
+#define KEXEC_FW_VER_SHIFT 16
+
+static u16 kexec_get_vram_mb(int packed_vram_mb)
+{
+    return (u16)((u32)packed_vram_mb & KEXEC_VRAM_MB_MASK);
+}
+
+static u16 kexec_get_fw_ver(int packed_vram_mb)
+{
+    return (u16)(((u32)packed_vram_mb >> KEXEC_FW_VER_SHIFT) &
+                 KEXEC_VRAM_MB_MASK);
+}
+
 int sys_kexec(void *td, struct sys_kexec_args *uap)
 {
     int err = 0;
@@ -61,13 +75,22 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     struct boot_params *bp = NULL;
     size_t cmd_line_maxlen = 0;
     char *cmd_line = NULL;
+    u16 vram_mb = kexec_get_vram_mb(uap->vram_gb);
+    u16 fw_ver = kexec_get_fw_ver(uap->vram_gb);
 
     int (*copyin)(const void *uaddr, void *kaddr, size_t len) = td ? kern.copyin : k_copyin;
     int (*copyinstr)(const void *uaddr, void *kaddr, size_t len, size_t *done) = td ? kern.copyinstr : k_copyinstr;
     int (*copyout)(const void *kaddr, void *uaddr, size_t len) = td ? kern.copyout : k_copyout;
 
     kern.printf("sys_kexec invoked\n");
-    kern.printf("Firmware version: %d\n", get_firmware());
+    if (fw_ver) {
+        kern.printf("Firmware version: %u.%02u (%u)\n",
+            (unsigned int)(fw_ver / 100),
+            (unsigned int)(fw_ver % 100),
+            (unsigned int)fw_ver);
+    } else {
+        kern.printf("Firmware version: unknown\n");
+    }
     kern.printf("sys_kexec(%p, %zu, %p, %zu, \"%s\")\n", uap->image,
         uap->image_size, uap->initramfs, uap->initramfs_size, uap->cmd_line);
 
@@ -178,7 +201,7 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     // Initialize bp
     // TODO should probably do this from cpu_quiesce_gate, then bp doesn't
     // need to be allocated here, just placed directly into low mem
-    set_nix_info(image, bp, initramfs, initramfs_size, cmd_line, uap->vram_gb);
+    set_nix_info(image, bp, initramfs, initramfs_size, cmd_line, (int)vram_mb);
 
     prepare_boot_params(bp, image);
 
