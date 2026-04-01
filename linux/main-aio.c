@@ -25,8 +25,10 @@
 #include "fw_detect.h"
 
 /* ═══════════════════════════════════════════════════════════════════
- *   Viską nxj kexec blobus įdedam kompiliavimo metu - nu nxj. neaišku kas čia nxj daros
- *     AIO_BAIKAL pasirenka PS4 Pro ar paprastus blobus, nxj.
+ * Embedded kexec blobs.
+ *
+ * AIO_BAIKAL selects the PS4 Pro (Baikal) blob set; otherwise the
+ * standard PS4 blobs are embedded.
  * ═══════════════════════════════════════════════════════════════════ */
 
 #ifndef AIO_BAIKAL
@@ -93,7 +95,7 @@ asm("kexec_1300:\n.incbin \"kexec-build/normal/1300/kexec.bin\"\nkexec_1300_end:
 asm("kexec_1302:\n.incbin \"kexec-build/normal/1302/kexec.bin\"\nkexec_1302_end:\n");
 #endif
 
-/* Forward deklaracijos visiems blob simboliams, nxj */
+/* Forward declarations for all embedded blob symbols. */
 extern char kexec_505[], kexec_505_end[];
 extern char kexec_672[], kexec_672_end[];
 extern char kexec_700[], kexec_700_end[];
@@ -114,9 +116,8 @@ extern char kexec_1300[], kexec_1300_end[];
 extern char kexec_1302[], kexec_1302_end[];
 
 /* ═══════════════════════════════════════════════════════════════════
- * §2  Runtime firmware offsetų nxj lentelė
- *     Visi offsetai patikrinti su freebsd-headers/ps4-offsets/*.h
- *     ir magic.h, nxj.
+ * §2  Runtime firmware offset table
+ *     Verified against the PS4 offset headers and magic.h.
  * ═══════════════════════════════════════════════════════════════════ */
 
 typedef struct {
@@ -217,36 +218,74 @@ int kexec_load(char *kernel, unsigned long long kernel_size,
                char *initrd,  unsigned long long initrd_size,
                char *cmdline, int vram_mb);
 
-int read_file(char *path, char **ptr, unsigned long long *sz)
+int read_file(const char *path, char **ptr, unsigned long long *sz)
 {
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) return -1;
-    *sz = lseek(fd, 0, SEEK_END);
-    *ptr = mmap(NULL, *sz, PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    char *p = *ptr;
-    unsigned long long l = *sz;
-    lseek(fd, 0, SEEK_SET);
-    while (l) {
-        unsigned long long chk = read(fd, p, l);
-        if (chk <= 0) return -1;
-        p += chk;
-        l -= chk;
+    int fd = -1;
+    long file_size = 0;
+    unsigned long long remaining = 0;
+    unsigned long long map_len = 0;
+    char *buf = (char *)0;
+    char *p = (char *)0;
+
+    if (!ptr || !sz)
+        return -1;
+
+    *ptr = (char *)0;
+    *sz = 0;
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0)
+        return -1;
+
+    file_size = lseek(fd, 0, SEEK_END);
+    if (file_size < 0)
+        goto fail;
+
+    map_len = (unsigned long long)file_size + 1;
+    buf = mmap(NULL, map_len, PROT_READ | PROT_WRITE,
+               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (buf == MAP_FAILED)
+        goto fail;
+
+    if (lseek(fd, 0, SEEK_SET) < 0)
+        goto fail;
+
+    p = buf;
+    remaining = (unsigned long long)file_size;
+    while (remaining) {
+        long chunk = read(fd, p, remaining);
+        if (chunk <= 0)
+            goto fail;
+        p += chunk;
+        remaining -= (unsigned long long)chunk;
     }
+
+    buf[file_size] = '\0';
     close(fd);
+    *ptr = buf;
+    *sz = (unsigned long long)file_size;
     return 0;
+
+fail:
+    if (buf && buf != MAP_FAILED)
+        munmap(buf, map_len);
+    if (fd >= 0)
+        close(fd);
+    return -1;
 }
 
-/* evf_open, evf_cancel, evf_close - kažkokie nxj eventai rebootui */
+/* Reboot-related event helpers provided by the payload runtime. */
 int evf_open(char *);
 void evf_cancel(int, unsigned long long, unsigned long long);
 void evf_close(int);
 
-void reboot_thread(void *_)
+void reboot_thread(void *unused)
 {
-    // Palauk nxj biškį ir tada rebootink
-    nanosleep((const struct timespec *)
-              "\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", NULL);
+    const struct timespec delay = { .tv_sec = 1, .tv_nsec = 0 };
+
+    (void)unused;
+
+    nanosleep(&delay, NULL);
     int evf = evf_open("SceSysCoreReboot");
     evf_cancel(evf, 0x4000, 0);
     evf_close(evf);
@@ -256,19 +295,39 @@ void reboot_thread(void *_)
 int my_atoi(const char *s)
 {
     int ret = 0, neg = 0;
-    while (*s == ' ') s++;
-    neg = (*s == '-') ? 1 : 0;
+
+    while (*s == ' ')
+        s++;
+
+    if (*s == '-' || *s == '+') {
+        neg = (*s == '-');
+        s++;
+    }
+
     for (; *s; s++) {
         char c = *s;
-        if ('0' <= c && c <= '9') { ret *= 10; ret += c - '0'; }
-        else break;
+
+        if ('0' <= c && c <= '9') {
+            ret *= 10;
+            ret += c - '0';
+        } else {
+            break;
+        }
     }
+
     return neg ? -ret : ret;
 }
 
 static int pack_kexec_vram_arg(int vram_mb, u16 fw_ver)
 {
     return (int)(((u32)fw_ver << 16) | ((u32)vram_mb & 0xFFFFu));
+}
+
+static void ignore_signal(int sig)
+{
+    struct sigaction sa = { .sa_handler = SIG_IGN, .sa_flags = 0 };
+
+    sigaction(sig, &sa, NULL);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -311,10 +370,16 @@ void kernel_main(void)
     char *new_kexec = ((char *(*)(unsigned long long, unsigned long long))
                        kmem_alloc)(*(unsigned long long *)kernel_map,
                                    g_kexec_e - g_kexec_s);
+    if (!new_kexec) {
+        ((void (*)(const char *, ...))early_printf)(
+            "AIO: kmem_alloc failed while staging kexec.\n");
+        return;
+    }
+
     for (int i = 0; g_kexec_s + i != g_kexec_e; i++)
         new_kexec[i] = g_kexec_s[i];
 
-    /* Paleidžiam kexec blobą, nxj */
+    /* Launch the selected kexec blob. */
     ((void (*)(void *, void *))new_kexec)((void *)early_printf, NULL);
 }
 
@@ -329,7 +394,7 @@ void kernel_main(void)
 #define VRAM_MB_MIN 32
 #endif
 #ifndef VRAM_MB_MAX
-#define VRAM_MB_MAX 4609
+#define VRAM_MB_MAX 4096
 #endif
 #ifndef HDD_BOOT_PATH
 #define HDD_BOOT_PATH "/data/linux/boot/"
@@ -344,13 +409,13 @@ void kernel_main(void)
 
 int main(void)
 {
-    // Signalus nxj ignoruojam, kad niekas nenudėtų proceso
-    struct sigaction sa = { .sa_handler = SIG_IGN, .sa_flags = 0 };
-    sigaction(SIGSTOP, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGKILL, &sa, NULL);
+    ignore_signal(SIGHUP);
+    ignore_signal(SIGINT);
+    ignore_signal(SIGPIPE);
+    ignore_signal(SIGQUIT);
+    ignore_signal(SIGTERM);
 
-    /* ── Firmware detekcija ir blobų pasirinkimas, nxj ─────────────── */
+    /* ── Firmware detection and blob selection ────────────────────── */
     u16 fw_ver = get_firmware();
     u16 norm   = normalize_fw_ver(fw_ver);
 
@@ -411,23 +476,36 @@ int main(void)
     /* ── Paleidžiam kernel exploitą → kernel_main(), nxj ───────────── */
     kexec(kernel_main, (void *)0);
 
-    /* ── Paleidžiam reboot watchdog threadą, tada Linux loaderį, nxj ─ */
-    long x, y;
-    struct thr_param thr = {
-        .start_func = reboot_thread,
-        .arg        = NULL,
-        .stack_base = mmap(NULL, 16384, PROT_READ | PROT_WRITE,
-                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0),
-        .stack_size = 16384,
-        .tls_base   = NULL,
-        .tls_size   = 0,
-        .child_tid  = &x,
-        .parent_tid = &y,
-        .flags      = 0,
-        .rtp        = NULL,
-    };
-    thr_new(&thr, sizeof(thr));
-    kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline,
-               pack_kexec_vram_arg(vram_mb, fw_ver));
+    /* ── Start the reboot watchdog thread, then launch Linux ──────── */
+    long x = 0, y = 0;
+    void *watchdog_stack = mmap(NULL, 16384, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (watchdog_stack != MAP_FAILED) {
+        struct thr_param thr = {
+            .start_func = reboot_thread,
+            .arg        = NULL,
+            .stack_base = watchdog_stack,
+            .stack_size = 16384,
+            .tls_base   = NULL,
+            .tls_size   = 0,
+            .child_tid  = &x,
+            .parent_tid = &y,
+            .flags      = 0,
+            .rtp        = NULL,
+        };
+
+        if (thr_new(&thr, sizeof(thr)) < 0)
+            log_msg("AIO: Failed to start reboot watchdog thread.");
+    } else {
+        log_msg("AIO: Failed to allocate reboot watchdog stack.");
+    }
+
+    if (kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline,
+                   pack_kexec_vram_arg(vram_mb, fw_ver)) < 0) {
+        log_msg("AIO: kexec_load failed.");
+        return 1;
+    }
+
     for (;;);
 }

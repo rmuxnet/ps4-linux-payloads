@@ -70,7 +70,7 @@ jmp_to_linux:
     rep movsq
     cld
 
-    # make a tiny stack - we just need it for the lretq.
+    # make a tiny stack - we just need it for the far return.
     # what we jump to will not use this stack
     lea rsp, [rip + jmp_to_linux_end + 0x200]
     and rsp, -0x10
@@ -79,7 +79,7 @@ jmp_to_linux:
     add r14, 0x200                  # pref_address + startup_64
     push r14                        # rip
     mov rsi, r13                    # bootargs
-    lretq
+    retfq
 jmp_to_linux_end:
 
 .data

@@ -60,7 +60,7 @@ Control VRAM size via a plain text file containing a number in **MB** (not GB).
 
 Default is 1024 MB (1 GB) if vram.txt is missing or invalid. Minimum is **32 MB**.
 
-> **Note:** 32 MB and 64 MB VRAM payloads work (tested on Aeolia/Belize). These are not included in the default precompiled releases, but you can compile them yourself by editing the `SIZES_MB` variable in the Makefile.
+> **Note:** 32 MB and 64 MB VRAM payloads are part of the default `SIZES_MB` list in this tree, so a local `make` builds them automatically. Some downstream release bundles may still choose to omit them.
 
 ## Server Use (Low VRAM Payloads)
 
@@ -81,9 +81,17 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 
 
 ## How to Compile
-    git clone https://github.com/ArabPixel/ps4-linux-payloads
+Requirements: `gcc`, `make`, `python3`, and `yasm` or `nasm`.
+
+The repository includes a checked-in `lib/syscalls.asm` snapshot, so normal builds do **not** need network access. Regenerate it only when you explicitly want to refresh the syscall wrapper snapshot:
+
+    cd lib
+    make regen-syscalls
+
+Build the payloads:
+
+    git clone https://github.com/rmuxnet/ps4-linux-payloads
     cd ps4-linux-payloads/linux
-    # Edit the Makefile SIZES_MB variable to add 32 or 64 if you want those payloads
     make
 
 

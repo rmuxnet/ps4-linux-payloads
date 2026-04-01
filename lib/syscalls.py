@@ -1,4 +1,8 @@
-import urllib.request, http.client, html
+import html
+import urllib.request
+
+# Explicitly used by `make regen-syscalls`; normal builds consume the
+# checked-in syscalls.asm snapshot and do not require network access.
 
 def get_freebsd_syscalls():
     data = urllib.request.urlopen('https://raw.githubusercontent.com/freebsd/freebsd/stable/9/sys/kern/syscalls.master').read().decode('ascii')
