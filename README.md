@@ -46,21 +46,19 @@ and of course it will work too with a USB / HDD Drive.  USB have highest priorit
 ### vram.txt
 Control VRAM size via a plain text file containing a number in **MB** (not GB).
 
-| vram.txt value | VRAM allocated | Payload suffix |
-|:-:|:-:|:-:|
-| `32`  | 32 MB  | `-32mb`  |
-| `64`  | 64 MB  | `-64mb`  |
-| `128` | 128 MB | `-128mb` |
-| `256` | 256 MB | `-256mb` |
-| `512` | 512 MB | `-512mb` |
-| `1024` | 1 GB | `-1gb` |
-| `2048` | 2 GB | `-2gb` |
-| `3072` | 3 GB | `-3gb` |
-| `4096` | 4 GB | `-4gb` |
+| vram.txt value | VRAM allocated
+|:-:|:-:|
+| `32`  | 32 MB
+| `64`  | 64 MB
+| `128` | 128 MM
+| `256` | 256 MB
+| `512` | 512 MB
+| `1024` | 1 GB
+| `2048` | 2 GB
+| `3072` | 3 GB
+| `4096` | 4 GB
 
 Default is 1024 MB (1 GB) if vram.txt is missing or invalid. Minimum is **32 MB**.
-
-> **Note:** 32 MB and 64 MB VRAM payloads work (tested on Aeolia/Belize). These are not included in the default precompiled releases, but you can compile them yourself by editing the `SIZES_MB` variable in the Makefile.
 
 ## Server Use (Low VRAM Payloads)
 
@@ -69,10 +67,10 @@ Default is 1024 MB (1 GB) if vram.txt is missing or invalid. Minimum is **32 MB*
 - **How to use:** 
   - **Option 1:** Just run the payload with the desired VRAM size (e.g. `-32mb`, `-64mb`, etc.).
   - **Option 2:** Add the value (e.g. `32`, `64`, `128`, etc.) into your `vram.txt` file to set it manually. Don't use these if you plan on gaming or using heavy desktop graphics!
+> Note: vram.txt takes priority. if `vram.txt` is present it'll ignore any other payload value you load and use the specified value from `vram.txt`
 
-## Note 
-* Use .elf`s files instead of .bin whenever possible as they provide a better success rate. 
-* Don't use a Baikal payload on a non Baikal console.
+## Notes
+* Use .elf`s files instead of .bin whenever possible.
 * if you need UART just add this to the cmdline i have disabled .... just for now on newer Kernel it doesnt work.
 
 Aeolia/Belize: ``console=uart8250,mmio32,0xd0340000``
@@ -83,7 +81,6 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 ## How to Compile
     git clone https://github.com/ArabPixel/ps4-linux-payloads
     cd ps4-linux-payloads/linux
-    # Edit the Makefile SIZES_MB variable to add 32 or 64 if you want those payloads
     make
 
 
@@ -97,11 +94,18 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 
 
 ## Change log
+- PS4 PRO, Southbridge and firmware version run-time detection [v24](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v24)
+  - No more separate Baikal or PRO payloads
+  - firmware agnostic payload. AKA one payload works for all supported firmware versions
+
+- Backup files path [v23](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v23)
+  - Looks for the files in ``/user/system/boot/``  if they weren't found in the default path ``/data/linux/boot/`` 
 
 - Complete support for PS4 7.xx and 8.xx. [v23](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v23)
 
-- Sub-1GB VRAM payloads – Added 128mb, 256mb and 512mb payload sizes for PS4 used as a headless server where GPU memory is largely unused. Set `vram.txt` to `128`, `256` or `512` (MB) to use them. [v22](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v22)
-- **128MB VRAM payloads are now supported (compile yourself by editing Makefile).**
+- Sub-1GB VRAM payloads [v22](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v22)
+  - Added 128mb, 256mb etc.. payload sizes for PS4 used as a headless server where GPU memory is largely unused. Set `vram.txt` to `128`, `256` or `512` (MB) to use them.
+  - **32 VRAM payloads are now supported.**
 
 - PS4 12.5x, 13.0x Support. [v21.5](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v21.5)
 
