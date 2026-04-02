@@ -384,13 +384,13 @@ int main(void)
 
     g_fw = find_offsets_by_fw(norm);
     if (!g_fw) {
-        log_msg("AIO: Unsupported firmware version - no offset table entry.");
+        alert("AIO: Unsupported firmware version - no offset table entry.");
         return 1;
     }
 
     get_kexec_blob(norm, &g_kexec_s, &g_kexec_e);
     if (!g_kexec_s || g_kexec_s == g_kexec_e) {
-        log_msg("AIO: No kexec blob found for this firmware.");
+        alert("AIO: No kexec blob found for this firmware.");
         return 1;
     }
     // southbridge
@@ -409,7 +409,7 @@ int main(void)
      && read_file(HDD_BOOT_PATH name, where, wheresz) \
      && read_file(HDD_SECOND_BOOT_PATH name, where, wheresz) \
      && is_fatal) { \
-        log_msg("Failed to load file: " name "\nChecked paths:\n" \
+        alert("Failed to load file: " name "\nChecked paths:\n" \
                 "/mnt/usb0/" name "\n/mnt/usb1/" name "\n" \
                 HDD_BOOT_PATH name "\n" HDD_SECOND_BOOT_PATH name); \
         return 1; \

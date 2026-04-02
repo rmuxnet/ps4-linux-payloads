@@ -13,3 +13,4 @@
 
 # Build output directories (adjust if your folder is named differently)
 fw_aio/
+lib/syscalls.asm
