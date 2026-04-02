@@ -1,12 +1,7 @@
 /*
  * main-aio.c — All-In-One PS4 Linux payload
  *
- * Supports all 18 firmware variants:
- *   505, 672, 700, 750, 800, 850, 900, 903, 960,
- *   1000, 1050, 1100, 1102, 1150, 1200, 1250, 1300, 1302
- *
  * Compile-time flags:
- *   -DAIO_BAIKAL=1   embed PS4 Pro (Baikal) kexec blobs instead of standard
  *   -DVRAM_MB_DEFAULT=<n>   default VRAM size in MB (required)
  *   -DVRAM_MB_MIN=<n>       minimum VRAM size in MB
  *   -DVRAM_MB_MAX=<n>       maximum VRAM size in MB
@@ -20,18 +15,18 @@
 #include <signal.h>
 #include <sys/thr.h>
 #include <time.h>
+#include <sys/sysctl.h>
+#include "sb_detect.h"
+
 
 #include "aio_types.h"
 #include "fw_detect.h"
 
-/* ═══════════════════════════════════════════════════════════════════
- *   Viską nxj kexec blobus įdedam kompiliavimo metu - nu nxj. neaišku kas čia nxj daros
- *     AIO_BAIKAL pasirenka PS4 Pro ar paprastus blobus, nxj.
- * ═══════════════════════════════════════════════════════════════════ */
+void* dlopen(const char*, int);
+void* dlsym(void*, const char*);
 
-#ifndef AIO_BAIKAL
-#define AIO_BAIKAL 0
-#endif
+typedef int (*t_sysctlbyname)(const char *, void *, size_t *, const void *, size_t);
+void thr_exit(long *state);
 
 static unsigned long long str_len(const char *s)
 {
@@ -53,47 +48,27 @@ static void log_msg(const char *msg)
         write(1, "\n", 1);
 }
 
-#if AIO_BAIKAL
-asm("kexec_505:\n.incbin \"kexec-build/baikal/505/kexec.bin\"\nkexec_505_end:\n");
-asm("kexec_672:\n.incbin \"kexec-build/baikal/672/kexec.bin\"\nkexec_672_end:\n");
-asm("kexec_700:\n.incbin \"kexec-build/baikal/700/kexec.bin\"\nkexec_700_end:\n");
-asm("kexec_750:\n.incbin \"kexec-build/baikal/750/kexec.bin\"\nkexec_750_end:\n");
-asm("kexec_800:\n.incbin \"kexec-build/baikal/800/kexec.bin\"\nkexec_800_end:\n");
-asm("kexec_850:\n.incbin \"kexec-build/baikal/850/kexec.bin\"\nkexec_850_end:\n");
-asm("kexec_900:\n.incbin \"kexec-build/baikal/900/kexec.bin\"\nkexec_900_end:\n");
-asm("kexec_903:\n.incbin \"kexec-build/baikal/903/kexec.bin\"\nkexec_903_end:\n");
-asm("kexec_960:\n.incbin \"kexec-build/baikal/960/kexec.bin\"\nkexec_960_end:\n");
-asm("kexec_1000:\n.incbin \"kexec-build/baikal/1000/kexec.bin\"\nkexec_1000_end:\n");
-asm("kexec_1050:\n.incbin \"kexec-build/baikal/1050/kexec.bin\"\nkexec_1050_end:\n");
-asm("kexec_1100:\n.incbin \"kexec-build/baikal/1100/kexec.bin\"\nkexec_1100_end:\n");
-asm("kexec_1102:\n.incbin \"kexec-build/baikal/1102/kexec.bin\"\nkexec_1102_end:\n");
-asm("kexec_1150:\n.incbin \"kexec-build/baikal/1150/kexec.bin\"\nkexec_1150_end:\n");
-asm("kexec_1200:\n.incbin \"kexec-build/baikal/1200/kexec.bin\"\nkexec_1200_end:\n");
-asm("kexec_1250:\n.incbin \"kexec-build/baikal/1250/kexec.bin\"\nkexec_1250_end:\n");
-asm("kexec_1300:\n.incbin \"kexec-build/baikal/1300/kexec.bin\"\nkexec_1300_end:\n");
-asm("kexec_1302:\n.incbin \"kexec-build/baikal/1302/kexec.bin\"\nkexec_1302_end:\n");
-#else
-asm("kexec_505:\n.incbin \"kexec-build/normal/505/kexec.bin\"\nkexec_505_end:\n");
-asm("kexec_672:\n.incbin \"kexec-build/normal/672/kexec.bin\"\nkexec_672_end:\n");
-asm("kexec_700:\n.incbin \"kexec-build/normal/700/kexec.bin\"\nkexec_700_end:\n");
-asm("kexec_750:\n.incbin \"kexec-build/normal/750/kexec.bin\"\nkexec_750_end:\n");
-asm("kexec_800:\n.incbin \"kexec-build/normal/800/kexec.bin\"\nkexec_800_end:\n");
-asm("kexec_850:\n.incbin \"kexec-build/normal/850/kexec.bin\"\nkexec_850_end:\n");
-asm("kexec_900:\n.incbin \"kexec-build/normal/900/kexec.bin\"\nkexec_900_end:\n");
-asm("kexec_903:\n.incbin \"kexec-build/normal/903/kexec.bin\"\nkexec_903_end:\n");
-asm("kexec_960:\n.incbin \"kexec-build/normal/960/kexec.bin\"\nkexec_960_end:\n");
-asm("kexec_1000:\n.incbin \"kexec-build/normal/1000/kexec.bin\"\nkexec_1000_end:\n");
-asm("kexec_1050:\n.incbin \"kexec-build/normal/1050/kexec.bin\"\nkexec_1050_end:\n");
-asm("kexec_1100:\n.incbin \"kexec-build/normal/1100/kexec.bin\"\nkexec_1100_end:\n");
-asm("kexec_1102:\n.incbin \"kexec-build/normal/1102/kexec.bin\"\nkexec_1102_end:\n");
-asm("kexec_1150:\n.incbin \"kexec-build/normal/1150/kexec.bin\"\nkexec_1150_end:\n");
-asm("kexec_1200:\n.incbin \"kexec-build/normal/1200/kexec.bin\"\nkexec_1200_end:\n");
-asm("kexec_1250:\n.incbin \"kexec-build/normal/1250/kexec.bin\"\nkexec_1250_end:\n");
-asm("kexec_1300:\n.incbin \"kexec-build/normal/1300/kexec.bin\"\nkexec_1300_end:\n");
-asm("kexec_1302:\n.incbin \"kexec-build/normal/1302/kexec.bin\"\nkexec_1302_end:\n");
-#endif
+// Universal kexec blobs
+asm("kexec_505:\n.incbin \"kexec-build/505/kexec.bin\"\nkexec_505_end:\n");
+asm("kexec_672:\n.incbin \"kexec-build/672/kexec.bin\"\nkexec_672_end:\n");
+asm("kexec_700:\n.incbin \"kexec-build/700/kexec.bin\"\nkexec_700_end:\n");
+asm("kexec_750:\n.incbin \"kexec-build/750/kexec.bin\"\nkexec_750_end:\n");
+asm("kexec_800:\n.incbin \"kexec-build/800/kexec.bin\"\nkexec_800_end:\n");
+asm("kexec_850:\n.incbin \"kexec-build/850/kexec.bin\"\nkexec_850_end:\n");
+asm("kexec_900:\n.incbin \"kexec-build/900/kexec.bin\"\nkexec_900_end:\n");
+asm("kexec_903:\n.incbin \"kexec-build/903/kexec.bin\"\nkexec_903_end:\n");
+asm("kexec_960:\n.incbin \"kexec-build/960/kexec.bin\"\nkexec_960_end:\n");
+asm("kexec_1000:\n.incbin \"kexec-build/1000/kexec.bin\"\nkexec_1000_end:\n");
+asm("kexec_1050:\n.incbin \"kexec-build/1050/kexec.bin\"\nkexec_1050_end:\n");
+asm("kexec_1100:\n.incbin \"kexec-build/1100/kexec.bin\"\nkexec_1100_end:\n");
+asm("kexec_1102:\n.incbin \"kexec-build/1102/kexec.bin\"\nkexec_1102_end:\n");
+asm("kexec_1150:\n.incbin \"kexec-build/1150/kexec.bin\"\nkexec_1150_end:\n");
+asm("kexec_1200:\n.incbin \"kexec-build/1200/kexec.bin\"\nkexec_1200_end:\n");
+asm("kexec_1250:\n.incbin \"kexec-build/1250/kexec.bin\"\nkexec_1250_end:\n");
+asm("kexec_1300:\n.incbin \"kexec-build/1300/kexec.bin\"\nkexec_1300_end:\n");
+asm("kexec_1302:\n.incbin \"kexec-build/1302/kexec.bin\"\nkexec_1302_end:\n");
 
-/* Forward deklaracijos visiems blob simboliams, nxj */
+/* Forward declarations for all blob symbols */
 extern char kexec_505[], kexec_505_end[];
 extern char kexec_672[], kexec_672_end[];
 extern char kexec_700[], kexec_700_end[];
@@ -113,11 +88,9 @@ extern char kexec_1250[], kexec_1250_end[];
 extern char kexec_1300[], kexec_1300_end[];
 extern char kexec_1302[], kexec_1302_end[];
 
-/* ═══════════════════════════════════════════════════════════════════
- * §2  Runtime firmware offsetų nxj lentelė
- *     Visi offsetai patikrinti su freebsd-headers/ps4-offsets/*.h
- *     ir magic.h, nxj.
- * ═══════════════════════════════════════════════════════════════════ */
+// Runtime firmware offset table
+// All offsets verified with freebsd-headers/ps4-offsets/*.h
+// and magic.h
 
 typedef struct {
     u16 fw_ver;           /* Normalised version (key) */
@@ -153,19 +126,16 @@ static fw_offsets_t fw_table[] = {
     { 0 }   /* sentinel */
 };
 
-/* ═══════════════════════════════════════════════════════════════════
- * §3  Globalai kuriuos main() nxj nustato, kernel_main() naudoja
- *     kernel_main() veikia kernel kontekste bet vis dar gali skaityt
- *     payload globalus, nes payloado nxj fizinė atmintis lieka mapped.
- * ═══════════════════════════════════════════════════════════════════ */
+// Globals set by main() and used by kernel_main()
+// kernel_main() runs in kernel context but can still read
+// payload globals because the payload's physical memory remains mapped.
 
 static fw_offsets_t *g_fw       = (fw_offsets_t *)0;
 static char         *g_kexec_s  = (char *)0;
 static char         *g_kexec_e  = (char *)0;
 
-/* ═══════════════════════════════════════════════════════════════════
- * §4  Pagalbinės nxj funkcijos
- * ═══════════════════════════════════════════════════════════════════ */
+
+// Helper functions
 
 static fw_offsets_t *find_offsets_by_fw(u16 fw)
 {
@@ -178,9 +148,9 @@ static fw_offsets_t *find_offsets_by_fw(u16 fw)
 }
 
 /*
- * get_kexec_blob — grąžina pradžią/pabaigą įdėto kexec
- * binaro pagal normalizuotą firmware versiją. Switchas,
- * kad nebūtų nxj problemų su linkeriais ir adresais.
+ * get_kexec_blob — returns the start/end of the embedded kexec
+ * binary according to the normalized firmware version. Switch,
+ * to avoid problems with linkers and addresses.
  */
 static void get_kexec_blob(u16 norm_fw, char **start, char **end)
 {
@@ -207,9 +177,7 @@ static void get_kexec_blob(u16 norm_fw, char **start, char **end)
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
- * §5  Platformos nxj pagalbinės AIO paleidimo keliui
- * ═══════════════════════════════════════════════════════════════════ */
+// Platform-specific helper functions for AIO launch
 
 asm("kexec_load:\nmov %rcx, %r10\nmov $153, %rax\nsyscall\nret");
 
@@ -237,20 +205,42 @@ int read_file(char *path, char **ptr, unsigned long long *sz)
     return 0;
 }
 
-/* evf_open, evf_cancel, evf_close - kažkokie nxj eventai rebootui */
+// evf_open, evf_cancel, evf_close - some events for reboot
 int evf_open(char *);
 void evf_cancel(int, unsigned long long, unsigned long long);
 void evf_close(int);
 
 void reboot_thread(void *_)
 {
-    // Palauk nxj biškį ir tada rebootink
+    // Wait a bit and then reboot
     nanosleep((const struct timespec *)
               "\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", NULL);
     int evf = evf_open("SceSysCoreReboot");
     evf_cancel(evf, 0x4000, 0);
     evf_close(evf);
     kill(1, SIGUSR1);
+    
+    // Threads must not return, so we exit or hang.
+    // A return would cause user thread fatal error
+    thr_exit(NULL);
+    for(;;);
+}
+
+void alert(const char* msg)
+{
+    static int(*sceSysUtilSendSystemNotificationWithText)(int, const char*);
+    if(!sceSysUtilSendSystemNotificationWithText)
+    {
+        // Try standard path first, then common path
+        void* handle = dlopen("/system/common/lib/libSceSysUtil.sprx", 0);
+        if(!handle) handle = dlopen("libSceSysUtil.sprx", 0);
+        
+        if(handle)
+            sceSysUtilSendSystemNotificationWithText = dlsym(handle, "sceSysUtilSendSystemNotificationWithText");
+    }
+    
+    if(sceSysUtilSendSystemNotificationWithText)
+        sceSysUtilSendSystemNotificationWithText(222, msg);
 }
 
 int my_atoi(const char *s)
@@ -266,15 +256,19 @@ int my_atoi(const char *s)
     return neg ? -ret : ret;
 }
 
-static int pack_kexec_vram_arg(int vram_mb, u16 fw_ver)
+static int pack_kexec_args(int vram_mb, u16 fw_ver, int sb_val)
 {
-    return (int)(((u32)fw_ver << 16) | ((u32)vram_mb & 0xFFFFu));
+    u32 sb_family = (u32)((sb_val >> 16) & 0xF); 
+    
+    return (int)(
+        ((sb_family & 0xF) << KEXEC_SB_SHIFT) | 
+        ((u32)fw_ver << KEXEC_FW_SHIFT)       | 
+        ((u32)vram_mb & KEXEC_VRAM_MASK)
+    );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
- * §6  kernel_main() — kernel kontekste po kexec nxj exploito
- *     Skaito g_fw / g_kexec_s / g_kexec_e kuriuos main() uždeda, nxj.
- * ═══════════════════════════════════════════════════════════════════ */
+// kernel_main() — in kernel context after kexec exploit
+// Reads g_fw / g_kexec_s / g_kexec_e which main() sets
 
 void kexec(void *f, void *u);
 
@@ -288,16 +282,16 @@ static unsigned long long get_syscall(void)
 
 void kernel_main(void)
 {
-    // kernel_base nxj suskaičiuojam
+    // kernel_base calculate
     unsigned long long kernel_base = get_syscall() - g_fw->xfast_syscall;
 
-    /* Išjungiam write-protect kad galėtume patchint kernelį, nxj */
+    // Disable write-protect to patch kernel
     asm volatile("cli\nmov %%cr0, %%rax\nbtc $16, %%rax\nmov %%rax, %%cr0"
                  : : : "rax");
 
     *(char *)(kernel_base + g_fw->patch1) = 0x07;
     *(char *)(kernel_base + g_fw->patch2) = 0x07;
-    /* pstate nustatom prieš shutdown (reik PS4 Pro), nxj */
+    // pstate set before shutdown (needed for PS4 Pro)
     *(char *)(kernel_base + g_fw->pstate)  = 0x03;
 
     asm volatile("mov %%cr0, %%rax\nbts $16, %%rax\nmov %%rax, %%cr0\nsti"
@@ -307,20 +301,18 @@ void kernel_main(void)
     unsigned long long kmem_alloc   = kernel_base + g_fw->kmem_alloc;
     unsigned long long kernel_map   = kernel_base + g_fw->kernel_map;
 
-    /* Kernel memory alloc ir nukopijuojam kexec blobą, nxj */
+    // Kernel memory alloc and copy kexec blob
     char *new_kexec = ((char *(*)(unsigned long long, unsigned long long))
                        kmem_alloc)(*(unsigned long long *)kernel_map,
                                    g_kexec_e - g_kexec_s);
     for (int i = 0; g_kexec_s + i != g_kexec_e; i++)
         new_kexec[i] = g_kexec_s[i];
 
-    /* Paleidžiam kexec blobą, nxj */
+    // Launch kexec blob
     ((void (*)(void *, void *))new_kexec)((void *)early_printf, NULL);
 }
 
-/* ═══════════════════════════════════════════════════════════════════
- * §7  VRAM nxj defaultai
- * ═══════════════════════════════════════════════════════════════════ */
+// VRAM default values
 
 #ifndef VRAM_MB_DEFAULT
 #define VRAM_MB_DEFAULT 1024
@@ -338,19 +330,55 @@ void kernel_main(void)
 #define HDD_SECOND_BOOT_PATH "/user/system/boot/"
 #endif
 
-/* ═══════════════════════════════════════════════════════════════════
- * §8  main() — user-space entry pointas, nxj
- * ═══════════════════════════════════════════════════════════════════ */
+int get_sb_id() {
+    static t_sysctlbyname p_sysctlbyname = NULL;
+
+    if (!p_sysctlbyname) {
+        // Resolve it from libkernel.sprx which is always loaded
+        void* handle = dlopen("libkernel.sprx", 0); 
+        if (!handle) handle = dlopen("/system/common/lib/libkernel.sprx", 0);
+        
+        p_sysctlbyname = (t_sysctlbyname)dlsym(handle, "sysctlbyname");
+    }
+
+    if (p_sysctlbyname) {
+        uint32_t id = 0;
+        size_t len = sizeof(id);
+        // Call the resolved function pointer
+        if (p_sysctlbyname("hw.sce_subsys_subid", &id, &len, NULL, 0) == 0) {
+            return (int)id;
+        }
+    }
+    return -1;
+}
+
+const char* GetSouthbridgeName(int val) {
+    // Sistro's hex patterns (0xXXYYZZ)
+    switch (val & 0xFFFFFF) {
+        case 0x10100: return "Aeolia A0";
+        case 0x10200: return "Aeolia A1";
+        case 0x10300: return "Aeolia A2";
+        case 0x20100: return "Belize A0";
+        case 0x20200: return "Belize B0";
+        case 0x30100: return "Baikal A0";
+        case 0x30200: return "Baikal B0";
+        case 0x30201: return "Baikal B1";
+        case 0x40100: return "Belize2 A0";
+        default:      return "Unknown Southbridge";
+    }
+}
+
+// main() — user-space entry pointas
 
 int main(void)
 {
-    // Signalus nxj ignoruojam, kad niekas nenudėtų proceso
+    // Ignore signals to prevent process termination
     struct sigaction sa = { .sa_handler = SIG_IGN, .sa_flags = 0 };
     sigaction(SIGSTOP, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
     sigaction(SIGKILL, &sa, NULL);
 
-    /* ── Firmware detekcija ir blobų pasirinkimas, nxj ─────────────── */
+    // Firmware detection and blob selection
     u16 fw_ver = get_firmware();
     u16 norm   = normalize_fw_ver(fw_ver);
 
@@ -365,8 +393,10 @@ int main(void)
         log_msg("AIO: No kexec blob found for this firmware.");
         return 1;
     }
+    // southbridge
+    int sb_val = get_sb_id();
 
-    /* ── Linux failų krovimas iš USB ar HDD, nxj ───────────────────── */
+    // Linux files loading from USB or HDD
     char *kernel = NULL; unsigned long long kernel_size = 0;
     char *initrd = NULL; unsigned long long initrd_size = 0;
     char *cmdline = NULL; unsigned long long cmdline_size = 0;
@@ -408,10 +438,10 @@ int main(void)
         vram_mb = VRAM_MB_DEFAULT;
     }
 
-    /* ── Paleidžiam kernel exploitą → kernel_main(), nxj ───────────── */
+    // Launch kernel exploit → kernel_main()
     kexec(kernel_main, (void *)0);
 
-    /* ── Paleidžiam reboot watchdog threadą, tada Linux loaderį, nxj ─ */
+    // Launch reboot watchdog thread, then Linux loader
     long x, y;
     struct thr_param thr = {
         .start_func = reboot_thread,
@@ -428,6 +458,6 @@ int main(void)
     };
     thr_new(&thr, sizeof(thr));
     kexec_load(kernel, kernel_size, initrd, initrd_size, cmdline,
-               pack_kexec_vram_arg(vram_mb, fw_ver));
+               pack_kexec_args(vram_mb, fw_ver, sb_val));
     for (;;);
 }

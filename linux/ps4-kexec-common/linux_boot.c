@@ -15,6 +15,9 @@
 #include "kernel.h"
 #include "uart.h"
 #include "acpi.h"
+#include "../sb_detect.h"
+
+extern u8 sb_id;
 
 void uart_write_byte(u8 b);
 
@@ -29,6 +32,9 @@ struct desc_ptr {
     u16 limit;
     u64 address;
 } __attribute__((packed));
+
+// For baikal
+#define MSR_GS_BASE     0xc0000101 /* 64bit GS base */
 
 struct desc_struct {
     u16 limit0;
@@ -183,7 +189,16 @@ static void cleanup_interrupts(void)
     wrmsr(0x413, (1L<<24) | (1L<<52));
     wrmsr(0xc0000408, (1L<<24) | (1L<<52));
 }
+// For baikal
+#define DEFAULT_STACK	0
 
+#define DPL0		0x0
+#define DPL3		0x3
+
+#define BPCIE_BAR2              0xc8800000
+#define BPCIE_HPET_BASE         0x109000
+#define BPCIE_HPET_SIZE         0x400
+// End baikal
 static void cpu_quiesce_gate(void *arg)
 {
     int i;
@@ -244,7 +259,7 @@ static void cpu_quiesce_gate(void *arg)
 
     uart_write_str("kexec: Setting up GDT...\n");
 
-    struct desc_ptr gdt_ptr;
+    struct desc_ptr gdt_ptr; //for baikal desc_ptr gdt_ptr;
     struct desc_struct *desc = (struct desc_struct *)(pdp_base + 512);
     gdt_ptr.limit = sizeof(struct desc_struct) * 0x100 - 1;
     gdt_ptr.address = DM_TO_ID(desc);
@@ -335,16 +350,34 @@ static void cpu_quiesce_gate(void *arg)
     // Disable IOMMU
     *(volatile u64 *)PA_TO_DM(0xfc000018) &= ~1;
 
-    // Disable all MSIs on Aeolia
-    for (i = 0; i < 8; i++)
-        *(volatile u32 *)PA_TO_DM(0xd03c844c + i*4) = 0;
-
-    // Stop HPET timers
-    *(volatile u64 *)PA_TO_DM(0xd0382010) = 0;
-    *(volatile u64 *)PA_TO_DM(0xd0382100) = 0;
-    *(volatile u64 *)PA_TO_DM(0xd0382120) = 0;
-    *(volatile u64 *)PA_TO_DM(0xd0382140) = 0;
-    *(volatile u64 *)PA_TO_DM(0xd0382160) = 0;
+    kern.printf("Current sb_id: %u\n", (unsigned int)sb_id);
+    kern.printf("\n");
+    kern.printf("SB_BAIKAL constant: %u\n", (unsigned int)SB_BAIKAL);
+    kern.printf("\n");
+    if (sb_id == SB_BAIKAL) {
+        kern.printf("kexec: Detected Baikal Southbridge, disabling IOMMU...\n");
+         // Disable all MSIs on Baikal (bus=0, slot=20)
+        disableMSI(0xf80a00e0); //func = 0 Baikal ACPI
+        disableMSI(0xf80a10e0); //func = 1 Baikal Ethernet Controller
+        disableMSI(0xf80a20e0); //func = 2 Baikal SATA AHCI Controller
+        disableMSI(0xf80a30e0); //func = 3 Baikal SD/MMC Host Controller
+        disableMSI(0xf80a40e0); //func = 4 Baikal PCI Express Glue and Miscellaneous Devices
+        disableMSI(0xf80a50e0); //func = 5 Baikal DMA Controller
+        disableMSI(0xf80a60e0); //func = 6 Baikal Baikal Memory (DDR3/SPM)
+        disableMSI(0xf80a70e0); //func = 7 Baikal Baikal USB 3.0 xHCI Host Controller
+    }else{
+        kern.printf("kexec: Detected non Baikal Southbridge, disabling IOMMU and HPET...\n");
+        // Disable all MSIs on Aeolia
+        for (i = 0; i < 8; i++)
+            *(volatile u32 *)PA_TO_DM(0xd03c844c + i*4) = 0;
+    
+        // Stop HPET timers
+        *(volatile u64 *)PA_TO_DM(0xd0382010) = 0;
+        *(volatile u64 *)PA_TO_DM(0xd0382100) = 0;
+        *(volatile u64 *)PA_TO_DM(0xd0382120) = 0;
+        *(volatile u64 *)PA_TO_DM(0xd0382140) = 0;
+        *(volatile u64 *)PA_TO_DM(0xd0382160) = 0;
+    }
 
     uart_write_str("kexec: Reconfiguring VRAM...\n");
 

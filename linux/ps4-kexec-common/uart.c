@@ -10,12 +10,16 @@
 
 #include "uart.h"
 #include "kernel.h"
+#include "../sb_detect.h"
+
+extern u8 sb_id;
 #define PHYS_TO_DMAP(size, addr) ((volatile u##size *)(kern.dmap_base | (uintptr_t)(addr)))
 
 #define AEOLIA_UART_BASE 0xD0340000
 #define BAIKAL_UART_BASE 0xC890E000
+#define UART_BASE (sb_id == SB_BAIKAL ? BAIKAL_UART_BASE : AEOLIA_UART_BASE)
 
-#define UART_REG(size, intf, reg) PHYS_TO_DMAP(size, AEOLIA_UART_BASE + (intf << 12) + (reg << 2))
+#define UART_REG(size, intf, reg) PHYS_TO_DMAP(size, UART_BASE + (intf << 12) + (reg << 2))
 
 #define UART_REG_DATA	0
 #define UART_REG_IER	1

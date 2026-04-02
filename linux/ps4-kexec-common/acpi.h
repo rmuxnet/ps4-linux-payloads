@@ -14,5 +14,10 @@
 #include "types.h"
 
 void fix_acpi_tables(void *map_base, u64 phys_base);
+// For baikal
+#define PA_TO_DM(x) (((uintptr_t)x) | kern.dmap_base)
+
+void disableMSI(u64 MSICapabilityRegAddr);
+u32 msi_mask(unsigned x);
 
 #endif

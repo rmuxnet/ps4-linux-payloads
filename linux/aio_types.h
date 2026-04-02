@@ -1,10 +1,9 @@
 /*
- * aio_types.h — Izoliuoti kernelio stiliaus sveikųjų skaičių tipai.
+ * aio_types.h — Isolated kernel-style integer types.
  *
- * SĄMONINGAI neįtraukia jokių POSIX ar standartinių antraščių. Tai garantuoja,
- * kad nebus jokių typedef konfliktų, kai AIO payload kompiliuojamas su
- * FreeBSD sys/types.h antraštėmis, kurios jau yra include kelyje. 
- * NET NXJ NETURETU VEIKTI BLET NES KAZKAS KURWA UNIFORMINIU BUDU NEGALI SURASYTI JOBANU KERNELIO OFFSETU
+ * INTENTIONALLY excludes any POSIX or standard headers. This guarantees
+ * no typedef conflicts when AIO payload is compiled with FreeBSD sys/types.h
+ * headers already included in the path.
  */
 
 #ifndef AIO_TYPES_H

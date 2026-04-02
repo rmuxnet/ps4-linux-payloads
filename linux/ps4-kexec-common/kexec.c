@@ -15,6 +15,9 @@
 #include "firmware.h"
 #include "string.h"
 #include "acpi.h"
+#include "../sb_detect.h"
+
+u8 sb_id = 0;
 
 static int k_copyin(const void *uaddr, void *kaddr, size_t len)
 {
@@ -51,21 +54,39 @@ static int k_copyout(const void *kaddr, void *uaddr, size_t len)
     return 0;
 }
 
-#define KEXEC_VRAM_MB_MASK 0xFFFFu
-#define KEXEC_FW_VER_SHIFT 16
+#define KEXEC_VRAM_MASK 0xFFFFu
+#define KEXEC_FW_MASK   0xFFFu
+#define KEXEC_SB_MASK   0xFu
 
-static u16 kexec_get_vram_mb(int packed_vram_mb)
+static u16 kexec_get_vram_mb(int packed)
 {
-    return (u16)((u32)packed_vram_mb & KEXEC_VRAM_MB_MASK);
+    return (u16)((u32)packed & KEXEC_VRAM_MASK);
 }
 
-static u16 kexec_get_fw_ver(int packed_vram_mb)
+static u16 kexec_get_fw_ver(int packed)
 {
-    return (u16)(((u32)packed_vram_mb >> KEXEC_FW_VER_SHIFT) &
-                 KEXEC_VRAM_MB_MASK);
+    // Shift past VRAM, then mask for 12 bits
+    return (u16)(((u32)packed >> 16) & KEXEC_FW_MASK);
 }
 
-static void kexec_print_banner(u16 fw_ver, u16 vram_mb)
+static u8 kexec_get_sb_id(int packed)
+{
+    // Shift to the very end for the 4-bit SB ID
+    return (u8)(((u32)packed >> 28) & KEXEC_SB_MASK);
+}
+
+static const char* kexec_get_sb_name(u8 id)
+{
+    switch (id) {
+        case SB_AEOLIA:  return "Aeolia";
+        case SB_BELIZE:  return "Belize";
+        case SB_BAIKAL:  return "Baikal";
+        case SB_BELIZE2: return "Belize2"; // Now correctly identified
+        default:         return "Unknown Southbridge";
+    }
+}
+
+static void kexec_print_banner(u16 fw_ver, u16 vram_mb, u8 sb_id)
 {
     kern.printf("========================================\n");
     kern.printf("PS4 Linux Payloads AIO\n");
@@ -78,6 +99,11 @@ static void kexec_print_banner(u16 fw_ver, u16 vram_mb)
         kern.printf("FW unknown\n");
     }
     kern.printf("VRAM %u MB\n", (unsigned int)vram_mb);
+    kern.printf("Southbridge: %s\n", kexec_get_sb_name(sb_id));
+    kern.printf("Current sb_id: %u\n", (unsigned int)sb_id);
+    kern.printf("\n");
+    kern.printf("SB_BAIKAL constant: %u\n", (unsigned int)SB_BAIKAL);
+
     kern.printf("========================================\n");
 }
 
@@ -93,13 +119,14 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     char *cmd_line = NULL;
     u16 vram_mb = kexec_get_vram_mb(uap->vram_gb);
     u16 fw_ver = kexec_get_fw_ver(uap->vram_gb);
+    sb_id = kexec_get_sb_id(uap->vram_gb);
 
     int (*copyin)(const void *uaddr, void *kaddr, size_t len) = td ? kern.copyin : k_copyin;
     int (*copyinstr)(const void *uaddr, void *kaddr, size_t len, size_t *done) = td ? kern.copyinstr : k_copyinstr;
     int (*copyout)(const void *kaddr, void *uaddr, size_t len) = td ? kern.copyout : k_copyout;
 
     kern.printf("sys_kexec invoked\n");
-    kexec_print_banner(fw_ver, vram_mb);
+    kexec_print_banner(fw_ver, vram_mb, sb_id);
     kern.printf("sys_kexec(%p, %zu, %p, %zu, \"%s\")\n", uap->image,
         uap->image_size, uap->initramfs, uap->initramfs_size, uap->cmd_line);
 
@@ -122,6 +149,7 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
         
         kern.set_cu_power_gate(0x24);
     }else{
+        // PS4 FAT/SLIM
         kern.set_pstate(3);
         kern.set_gpu_freq(0, 800); //800 //800
         kern.set_gpu_freq(1, 673); //673 //853
