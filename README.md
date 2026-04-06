@@ -70,6 +70,7 @@ Default is 1024 MB (1 GB) if vram.txt is missing or invalid. Minimum is **32 MB*
 > Note: vram.txt takes priority. if `vram.txt` is present it'll ignore any other payload value you load and use the specified value from `vram.txt`
 
 ## Notes
+* If you face a black screen, make sure to use a kernel from an up-to-date guide.
 * Use .elf`s files instead of .bin whenever possible.
 * if you need UART just add this to the cmdline i have disabled .... just for now on newer Kernel it doesnt work.
 
@@ -94,7 +95,7 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 
 
 ## Change log
-- PS4 PRO, Southbridge and firmware version run-time detection [v24](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v24)
+- PS4 PRO, Southbridge and firmware version run-time detection [v24b](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v24b)
   - No more separate Baikal or PRO payloads
   - firmware agnostic payload. AKA one payload works for all supported firmware versions
 
