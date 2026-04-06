@@ -20,51 +20,36 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang llvm yasm zip
 
-      - name: Build PS4 payloads in linux/
+      - name: Build PS4 payloads in linux
         run: |
           cd linux
           make
 
       - name: Count generated files
         run: |
-          echo "Counting generated payloads in linux/aio/..."
-          BIN_COUNT=$(find linux/aio -maxdepth 1 -name '*.bin' | wc -l)
-          ELF_COUNT=$(find linux/aio -maxdepth 1 -name '*.elf' | wc -l)
+          echo "Counting generated payloads in linux..."
           
-          echo "Found $BIN_COUNT .bin files."
-          echo "Found $ELF_COUNT .elf files."
+          BIN_COUNT=$(find linux -name 'linux-*.bin' | wc -l)
+          ELF_COUNT=$(find linux -name 'linux-*.elf' | wc -l)
           
-          # Export counts to GitHub ENV so they can be used in the Release body
+          echo "Found $BIN_COUNT linux-*.bin files."
+          echo "Found $ELF_COUNT linux-*.elf files."
+          
+          # Export counts to GitHub ENV
           echo "BIN_COUNT=$BIN_COUNT" >> $GITHUB_ENV
           echo "ELF_COUNT=$ELF_COUNT" >> $GITHUB_ENV
 
       - name: Collect artifacts
         run: |
           mkdir -p artifacts/bin artifacts/elf
-          # Updated to target the new 'aio' directory instead of the legacy 'fw*' directories
-          find linux/aio -name '*.bin' -exec cp {} artifacts/bin/ \;
-          find linux/aio -name '*.elf' -exec cp {} artifacts/elf/ \;
+          
+          find linux -name 'linux-*.bin' -exec cp {} artifacts/bin/ \;
+          find linux -name 'linux-*.elf' -exec cp {} artifacts/elf/ \;
 
-      - name: Zip artifacts
-        run: |
-          cd artifacts
-          zip -r ps4-payloads-bin.zip bin
-          zip -r ps4-payloads-elf.zip elf
-
-      - name: Create GitHub Release and upload assets
-        uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' # Prevents releases from triggering on PRs
+      - name: Upload artifacts to GitHub Actions
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ github.run_number }}
-          name: "PS4 Payloads Release v${{ github.run_number }}"
-          body: |
-            Automated build of PS4 AIO payloads.
-            
-            **Build Statistics:**
-            - `.bin` Payloads: ${{ env.BIN_COUNT }}
-            - `.elf` Files: ${{ env.ELF_COUNT }}
-          files: |
-            artifacts/ps4-payloads-bin.zip
-            artifacts/ps4-payloads-elf.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ps4-linux-payloads
+          path: |
+            artifacts/bin
+            artifacts/elf
