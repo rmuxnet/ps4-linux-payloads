@@ -369,7 +369,7 @@
 #define kern_off_sched_pin 0x004447e0
 #define kern_off_sched_unpin 0x00444800
 #define kern_off_smp_rendezvous 0x00091190
-#define kern_off_smp_no_rendevous_barrier 0x001e27c0
+#define kern_off_smp_no_rendevous_barrier 0x90FA0
 #define kern_off_icc_query_nowait 0x000695f0
 #define kern_off_kernel_map 0x022a9250
 #define kern_off_sysent 0x011029c0
@@ -389,7 +389,7 @@
 #define kern_off_update_vddnp 0x004d8a40
 #define kern_off_set_cu_power_gate 0x004d8e50
 #define kern_off_pstate_before_shutdown 0x0045dcc0
-#define kern_off_set_nclk_mem_spd 0
+#define kern_off_set_nclk_mem_spd 0x18170
 
 #elif defined PS4_11_00 //EinTim23
 #define kern_off_printf	0x2fcbd0
