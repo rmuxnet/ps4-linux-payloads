@@ -19,6 +19,24 @@
 
 u8 sb_id = 0;
 
+#define LINUX_BOOT_FLAG_MAGIC 0xAA55
+#define LINUX_HDR_MAGIC       0x53726448
+
+static int bad_kptr(const void *p)
+{
+    uintptr_t v = (uintptr_t)p;
+    return v == 0 || v == ~(uintptr_t)0;
+}
+
+static int image_looks_linux(const struct boot_params *bp)
+{
+    if (!bp)
+        return 0;
+
+    return bp->hdr.boot_flag == LINUX_BOOT_FLAG_MAGIC &&
+           bp->hdr.header == LINUX_HDR_MAGIC;
+}
+
 static int k_copyin(const void *uaddr, void *kaddr, size_t len)
 {
     if (!uaddr || !kaddr)
@@ -32,8 +50,10 @@ static int k_copyinstr(const void *uaddr, void *kaddr, size_t len, size_t *done)
     const char *ustr = (const char*)uaddr;
     char *kstr = (char*)kaddr;
     size_t ret;
+
     if (!uaddr || !kaddr)
         return EFAULT;
+
     ret = strlcpy(kstr, ustr, len);
     if (ret >= len) {
         if (done)
@@ -65,13 +85,11 @@ static u16 kexec_get_vram_mb(int packed)
 
 static u16 kexec_get_fw_ver(int packed)
 {
-    // Shift past VRAM, then mask for 12 bits
     return (u16)(((u32)packed >> 16) & KEXEC_FW_MASK);
 }
 
 static u8 kexec_get_sb_id(int packed)
 {
-    // Shift to the very end for the 4-bit SB ID
     return (u8)(((u32)packed >> 28) & KEXEC_SB_MASK);
 }
 
@@ -113,13 +131,18 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     struct boot_params *bp = NULL;
     size_t cmd_line_maxlen = 0;
     char *cmd_line = NULL;
+    const struct boot_params *img_bp = NULL;
     u16 vram_mb = kexec_get_vram_mb(uap->vram_gb);
     u16 fw_ver = kexec_get_fw_ver(uap->vram_gb);
+
     sb_id = kexec_get_sb_id(uap->vram_gb);
 
-    int (*copyin)(const void *uaddr, void *kaddr, size_t len) = td ? kern.copyin : k_copyin;
-    int (*copyinstr)(const void *uaddr, void *kaddr, size_t len, size_t *done) = td ? kern.copyinstr : k_copyinstr;
-    int (*copyout)(const void *kaddr, void *uaddr, size_t len) = td ? kern.copyout : k_copyout;
+    int (*copyin)(const void *uaddr, void *kaddr, size_t len) =
+        td ? kern.copyin : k_copyin;
+    int (*copyinstr)(const void *uaddr, void *kaddr, size_t len, size_t *done) =
+        td ? kern.copyinstr : k_copyinstr;
+    int (*copyout)(const void *kaddr, void *uaddr, size_t len) =
+        td ? kern.copyout : k_copyout;
 
     kern.printf("sys_kexec invoked\n");
     kexec_print_banner(fw_ver, vram_mb, sb_id);
@@ -133,66 +156,85 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
         goto cleanup;
     }
 
-    // Set gpu frequencies and pstate   
-    //                      FAT&SLIM / PRO
-    if (kern.gpu_devid_is_9924()){
+    // Set gpu frequencies and pstate
+    if (kern.gpu_devid_is_9924()) {
         // PS4 PRO
-        kern.set_gpu_freq(1, 853); //673 //853
-        kern.set_gpu_freq(2, 711); //610 //711
-        kern.set_gpu_freq(4, 911); //800 //911
-        kern.set_gpu_freq(5, 800); //711 //800
-        kern.set_gpu_freq(6, 984); //711 //984
-        
+        kern.set_gpu_freq(1, 853);
+        kern.set_gpu_freq(2, 711);
+        kern.set_gpu_freq(4, 911);
+        kern.set_gpu_freq(5, 800);
+        kern.set_gpu_freq(6, 984);
+
         kern.set_cu_power_gate(0x24);
-    }else{
+    } else {
         // PS4 FAT/SLIM
         kern.set_pstate(3);
-        kern.set_gpu_freq(0, 800); //800 //800
-        kern.set_gpu_freq(1, 673); //673 //853
-        kern.set_gpu_freq(2, 609); //610 //711
-        kern.set_gpu_freq(4, 800); //800 //911
-        kern.set_gpu_freq(5, 711); //711 //800
-        kern.set_gpu_freq(6, 711); //711 //984
+        kern.set_gpu_freq(0, 800);
+        kern.set_gpu_freq(1, 673);
+        kern.set_gpu_freq(2, 609);
+        kern.set_gpu_freq(4, 800);
+        kern.set_gpu_freq(5, 711);
+        kern.set_gpu_freq(6, 711);
 
         kern.set_cu_power_gate(0x12);
     }
+
     // Both PRO & FAT/SLIM
     kern.set_pstate(3);
-    kern.set_gpu_freq(0, 800); //800 //800
-    kern.set_gpu_freq(3, 800); //800 //800
-    kern.set_gpu_freq(7, 673); //673 //673
+    kern.set_gpu_freq(0, 800);
+    kern.set_gpu_freq(3, 800);
+    kern.set_gpu_freq(7, 673);
     kern.update_vddnp(0x12);
 
     // Copy in kernel image
     image = kernel_alloc_contig(uap->image_size);
-    if (!image) {
-        kern.printf("Failed to allocate image\n");
+    if (!image || bad_kptr(image)) {
+        kern.printf("Failed to allocate valid image buffer: %p\n", image);
         err = ENOMEM;
         goto cleanup;
     }
+
     err = copyin(uap->image, image, uap->image_size);
     if (err) {
         kern.printf("Failed to copy in image\n");
         goto cleanup;
     }
 
+    img_bp = (const struct boot_params *)image;
+    if (!image_looks_linux(img_bp)) {
+        kern.printf("Invalid Linux image header: boot_flag=%#x header=%#x version=%#x\n",
+                    img_bp->hdr.boot_flag, img_bp->hdr.header,
+                    img_bp->hdr.version);
+        err = EINVAL;
+        goto cleanup;
+    }
+
+    kern.printf("Linux image header:\n");
+    kern.printf("    boot_flag:    %#x\n", img_bp->hdr.boot_flag);
+    kern.printf("    header:       %#x\n", img_bp->hdr.header);
+    kern.printf("    version:      %#x\n", img_bp->hdr.version);
+    kern.printf("    cmdline_size: %u\n", img_bp->hdr.cmdline_size);
+    kern.printf("    init_size:    %u\n", img_bp->hdr.init_size);
+    kern.printf("    pref_address: %#llx\n",
+                (unsigned long long)img_bp->hdr.pref_address);
+
     // Copy in initramfs
     initramfs = kernel_alloc_contig(initramfs_size + FW_CPIO_SIZE);
-    if (!initramfs) {
-        kern.printf("Failed to allocate initramfs\n");
+    if (!initramfs || bad_kptr(initramfs)) {
+        kern.printf("Failed to allocate valid initramfs buffer: %p\n", initramfs);
         err = ENOMEM;
         goto cleanup;
     }
 
-    err = firmware_extract(((u8*)initramfs));
+    err = firmware_extract((u8 *)initramfs);
     if (err < 0) {
         kern.printf("Failed to extract GPU firmware - continuing anyway\n");
     } else {
-        firmware_size = err;
+        firmware_size = (size_t)err;
     }
 
     if (initramfs_size) {
-        err = copyin(uap->initramfs, initramfs + firmware_size, initramfs_size);
+        err = copyin(uap->initramfs, (u8 *)initramfs + firmware_size, initramfs_size);
         if (err) {
             kern.printf("Failed to copy in initramfs\n");
             goto cleanup;
@@ -201,13 +243,20 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     initramfs_size += firmware_size;
 
     // Copy in cmdline
-    cmd_line_maxlen = ((struct boot_params *)image)->hdr.cmdline_size + 1;
+    cmd_line_maxlen = (size_t)img_bp->hdr.cmdline_size + 1;
+    if (cmd_line_maxlen < 2 || cmd_line_maxlen > 0x10000) {
+        kern.printf("Bad cmdline_size: %zu\n", cmd_line_maxlen);
+        err = EINVAL;
+        goto cleanup;
+    }
+
     cmd_line = kernel_alloc_contig(cmd_line_maxlen);
-    if (!cmd_line) {
-        kern.printf("Failed to allocate cmdline\n");
+    if (!cmd_line || bad_kptr(cmd_line)) {
+        kern.printf("Failed to allocate valid cmdline buffer: %p\n", cmd_line);
         err = ENOMEM;
         goto cleanup;
     }
+
     err = copyinstr(uap->cmd_line, cmd_line, cmd_line_maxlen, NULL);
     if (err) {
         kern.printf("Failed to copy in cmdline\n");
@@ -222,45 +271,56 @@ int sys_kexec(void *td, struct sys_kexec_args *uap)
     kern.printf("    Kernel command line: %s\n", cmd_line);
     kern.printf("    Kernel image buffer: %p\n", image);
     kern.printf("    Initramfs buffer:    %p\n", initramfs);
+    kern.printf("    Cmdline buffer:      %p\n", cmd_line);
 
     // Allocate our boot params
     bp = kernel_alloc_contig(sizeof(*bp));
-    if (!bp) {
-        kern.printf("Failed to allocate bp\n");
+    if (!bp || bad_kptr(bp)) {
+        kern.printf("Failed to allocate valid bp: %p\n", bp);
         err = ENOMEM;
         goto cleanup;
     }
 
-    // Initialize bp
-    // TODO should probably do this from cpu_quiesce_gate, then bp doesn't
-    // need to be allocated here, just placed directly into low mem
     set_nix_info(image, bp, initramfs, initramfs_size, cmd_line, (int)vram_mb);
-
     prepare_boot_params(bp, image);
 
-    // Hook the final ICC shutdown function
+    kern.printf("Prepared boot params:\n");
+    kern.printf("    bp:                %p\n", bp);
+    kern.printf("    boot_flag:         %#x\n", bp->hdr.boot_flag);
+    kern.printf("    header:            %#x\n", bp->hdr.header);
+    kern.printf("    version:           %#x\n", bp->hdr.version);
+    kern.printf("    cmd_line_ptr:      %#x\n", bp->hdr.cmd_line_ptr);
+    kern.printf("    ramdisk_image:     %#x\n", bp->hdr.ramdisk_image);
+    kern.printf("    ramdisk_size:      %#x\n", bp->hdr.ramdisk_size);
+    kern.printf("    ext_ramdisk_image: %#x\n", bp->ext_ramdisk_image);
+    kern.printf("    ext_ramdisk_size:  %#x\n", bp->ext_ramdisk_size);
+    kern.printf("    type_of_loader:    %#x\n", bp->hdr.type_of_loader);
+    kern.printf("    hardware_subarch:  %u\n", bp->hdr.hardware_subarch);
+
+    if (!image_looks_linux(bp)) {
+        kern.printf("Prepared boot params contain invalid header: boot_flag=%#x header=%#x\n",
+                    bp->hdr.boot_flag, bp->hdr.header);
+        err = EINVAL;
+        goto cleanup;
+    }
+
     if (!kernel_hook_install(hook_icc_query_nowait, icc_query_nowait)) {
         kern.printf("Failed to install shutdown hook\n");
         err = EINVAL;
         goto cleanup;
     }
-    
+
     kern.printf("******************************************************\n");
     kern.printf("kexec successfully armed. Please shut down the system.\n");
     kern.printf("******************************************************\n\n");
 
-/*
-    kern.printf("\nkern_reboot(0x%x)...\n", RB_POWEROFF);
-    if (kern.kern_reboot(RB_POWEROFF) == -1)
-        kern.printf("\nkern_reboot(0x%x) failed\n", RB_POWEROFF);
-*/
     return 0;
 
 cleanup:
     kernel_free_contig(cmd_line, cmd_line_maxlen);
     kernel_free_contig(bp, sizeof(*bp));
     kernel_free_contig(image, uap->image_size);
-    kernel_free_contig(initramfs, uap->initramfs_size);
+    kernel_free_contig(initramfs, initramfs_size);
     return err;
 
     copyout(NULL, NULL, 0);
