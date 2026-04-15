@@ -145,31 +145,69 @@ static int resolve_symbols(void)
     return 1;
 }
 
-#define	M_WAITOK 0x0002
-#define	M_ZERO   0x0100
+#define M_WAITOK                0x0002
+#define M_ZERO                  0x0100
+#define VM_MEMATTR_DEFAULT      0x06
 
-#define	VM_MEMATTR_DEFAULT		0x06
+static int kernel_phys_invalid(vm_paddr_t pa)
+{
+    return pa == 0 || pa == ~(vm_paddr_t)0;
+}
+
+static int kernel_ptr_invalid(const void *p)
+{
+    uintptr_t v = (uintptr_t)p;
+    return v == 0 || v == ~(uintptr_t)0;
+}
 
 void *kernel_alloc_contig(size_t size)
 {
-    // use kmem_alloc_contig instead of contigalloc to avoid messing with a malloc_type...
-    vm_offset_t ret = 0;
-    while(!(ret = kern.kmem_alloc_contig(
-                 *kern.kernel_map, size, M_ZERO | M_WAITOK, (vm_paddr_t)0,
-                 ~(vm_paddr_t)0, 1, 0, VM_MEMATTR_DEFAULT)));
+    vm_offset_t kva = 0;
+    vm_paddr_t pa = 0;
+    void *dmap = NULL;
 
-    /*if (!ret) {
-        kern.printf("Failed to allocate %zud bytes\n", size);
+    while (!(kva = kern.kmem_alloc_contig(
+                 *kern.kernel_map, size, M_ZERO | M_WAITOK, (vm_paddr_t)0,
+                 ~(vm_paddr_t)0, 1, 0, VM_MEMATTR_DEFAULT)))
+        ;
+
+    if (!kva) {
+        kern.printf("kernel_alloc_contig: kmem_alloc_contig failed for %zu bytes\n", size);
         return NULL;
-    }*/
-    return (void *)PA_TO_DM(kern.pmap_extract(kern.kernel_pmap_store, ret));
+    }
+
+    pa = kern.pmap_extract(kern.kernel_pmap_store, kva);
+    if (kernel_phys_invalid(pa)) {
+        kern.printf("kernel_alloc_contig: bad pmap_extract kva=%p pa=%llx size=%zu\n",
+                    (void *)kva, (unsigned long long)pa, size);
+        kern.kmem_free(*kern.kernel_map, kva, size);
+        return NULL;
+    }
+
+    dmap = (void *)PA_TO_DM(pa);
+    if (kernel_ptr_invalid(dmap)) {
+        kern.printf("kernel_alloc_contig: bad dmap kva=%p pa=%llx dmap=%p size=%zu\n",
+                    (void *)kva, (unsigned long long)pa, dmap, size);
+        kern.kmem_free(*kern.kernel_map, kva, size);
+        return NULL;
+    }
+
+    return dmap;
 }
 
 void kernel_free_contig(void *addr, size_t size)
 {
-    if (!addr)
+    if (!addr || kernel_ptr_invalid(addr))
         return;
-    kern.kmem_free(*kern.kernel_map, (vm_offset_t)addr, size);
+
+    /*
+     * kernel_alloc_contig() returns a direct-map alias, not the original
+     * kernel_map VA.  Freeing that alias through kmem_free() is unsafe
+     * without tracking the original KVA.  For payload debug/reboot usage,
+     * leaking these short-lived buffers is safer than freeing the wrong VA.
+     */
+    kern.printf("kernel_free_contig: skipping free of %p (%zu bytes)\n",
+                addr, size);
 }
 
 int kernel_hook_install(void *target, void *hook)
@@ -262,7 +300,7 @@ static int patch_pmap_check(void)
 
     for (p = (u8*)kern.pmap_protect;
          p < ((u8*)kern.pmap_protect + 0x500); p++) {
-        #ifdef PS4_6_72
+#ifdef PS4_6_72
         if (!memcmp(p, "\xF8\xF7\xD0\x83\xE0\x06", 6)) { // bytes were slightly different on 6.72
             p[5] = 0;
             kern.printf("pmap_protect patch successful (found at %p)\n", p);
@@ -274,13 +312,13 @@ static int patch_pmap_check(void)
             kern.printf("pmap_protect patch successful (found at %p)\n", p);
             return 1;
         }*/
-        #else
+#else
         if (!memcmp(p, "x83\xe0\x06\x83\xf8\x06", 6)) {
             p[2] = 0;
             kern.printf("pmap_protect patch successful (found at %p)\n", p);
             return 1;
         }
-        #endif
+#endif
     }
     kern.printf("pmap_protect patch failed!\n");
     return 0;
