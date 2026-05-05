@@ -364,7 +364,6 @@ static void cpu_quiesce_gate(void *arg)
         disableMSI(0xf80a40e0); //func = 4 Baikal PCI Express Glue and Miscellaneous Devices
         disableMSI(0xf80a50e0); //func = 5 Baikal DMA Controller
         disableMSI(0xf80a60e0); //func = 6 Baikal Baikal Memory (DDR3/SPM)
-        disableMSI(0xf80a70e0); //func = 7 Baikal Baikal USB 3.0 xHCI Host Controller
     }else{
         kern.printf("kexec: Detected non Baikal Southbridge, disabling IOMMU and HPET...\n");
         // Disable all MSIs on Aeolia
